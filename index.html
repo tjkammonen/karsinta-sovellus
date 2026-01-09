@@ -23,7 +23,7 @@
         .bar-room { background: var(--p); }
         
         .flex { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+        input, textarea { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
         button { padding: 10px 15px; border: none; border-radius: 6px; background: var(--p); color: white; cursor: pointer; font-weight: bold; }
         .btn-add { background: #27ae60; margin-top: 10px; }
         .btn-edit { background: #d35400; font-size: 0.75em; padding: 4px 8px; }
@@ -31,9 +31,10 @@
         .btn-sec { background: #7f8c8d; }
         .btn-small { padding: 5px 10px; font-size: 0.85em; }
         
-        .export-import-area { display: flex; gap: 10px; margin-top: 15px; }
-        .btn-export { background: #2980b9; flex: 1; }
-        .btn-import { background: #8e44ad; flex: 1; }
+        .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn-export { background: #2980b9; }
+        .btn-import { background: #8e44ad; }
+        .btn-text { background: #2c3e50; grid-column: span 2; }
         #fileInput { display: none; }
 
         .category-form { background: #eef2ed; padding: 10px; border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
@@ -56,9 +57,10 @@
             <p style="font-size: 0.8em; color: #666;">Ei vielä huoneita listattuna.</p>
         </div>
 
-        <div class="export-import-area">
+        <div class="backup-grid">
             <button class="btn-export" onclick="exportToCSV()">📥 Vie CSV</button>
             <button class="btn-import" onclick="document.getElementById('fileInput').click()">📤 Tuo CSV</button>
+            <button class="btn-text" onclick="handleTextTransfer()">📝 Kopioi / Tuo tekstinä</button>
             <input type="file" id="fileInput" accept=".csv" onchange="importFromCSV(event)">
         </div>
     </header>
@@ -136,11 +138,31 @@
         sync();
     }
 
-    function exportToCSV() {
-        if (state.length === 0) {
-            alert("Ei tietoja vietäväksi!");
-            return;
+    // TEKSTIMUOTOINEN SIIRTO
+    function handleTextTransfer() {
+        const currentData = JSON.stringify(state);
+        const input = prompt("Tässä on nykyinen tilasi tekstimuodossa. Voit kopioida sen talteen.\n\nTAI jos haluat tuoda tietoa, liitä aiemmin kopioimasi teksti tähän alle:", currentData);
+        
+        if (input !== null && input !== currentData) {
+            try {
+                const parsed = JSON.parse(input);
+                if (Array.isArray(parsed)) {
+                    if (confirm("Haluatko varmasti korvata nykyiset tiedot tällä tekstityksellä?")) {
+                        state = parsed;
+                        sync();
+                        alert("Tila päivitetty!");
+                    }
+                } else {
+                    alert("Virheellinen tekstimuoto.");
+                }
+            } catch (e) {
+                alert("Tekstin luku epäonnistui. Varmista, että kopioit koko tekstin.");
+            }
         }
+    }
+
+    function exportToCSV() {
+        if (state.length === 0) return alert("Ei tietoja!");
         let csvRows = ["Huone;Kategoria;Alkumäärä;Tavoite (1/3);Poistettu;Edistyminen %"];
         state.forEach(room => {
             room.categories.forEach(cat => {
@@ -158,54 +180,29 @@
         link.click();
     }
 
-    // UUSI TOIMINTO: CSV-TUONTI
     function importFromCSV(event) {
         const file = event.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(e) {
-            const text = e.target.result;
-            const lines = text.split(/\r?\n/);
-            
-            if (lines.length < 2) return;
-
+            const lines = e.target.result.split(/\r?\n/);
             const newState = [];
-            // Aloitetaan riviltä 1 (otsikko ohitetaan)
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
-                
                 const cols = lines[i].split(';');
                 if (cols.length < 5) continue;
-
-                const roomName = cols[0].trim();
-                const catName = cols[1].trim();
-                const startNum = parseInt(cols[2]) || 0;
-                const removedNum = parseInt(cols[4]) || 0;
-
-                // Etsitään onko huone jo lisätty uuteen tilaan
-                let room = newState.find(r => r.name === roomName);
+                let room = newState.find(r => r.name === cols[0].trim());
                 if (!room) {
-                    room = { id: Date.now() + i, name: roomName, categories: [] };
+                    room = { id: Date.now() + i, name: cols[0].trim(), categories: [] };
                     newState.push(room);
                 }
-                
-                room.categories.push({
-                    id: Date.now() + i + 100,
-                    name: catName,
-                    start: startNum,
-                    removed: removedNum
-                });
+                room.categories.push({ id: Date.now() + i + 500, name: cols[1].trim(), start: parseInt(cols[2]) || 0, removed: parseInt(cols[4]) || 0 });
             }
-
-            if (newState.length > 0) {
-                if (confirm("Haluatko korvata nykyiset tiedot tuoduilla tiedoilla?")) {
-                    state = newState;
-                    sync();
-                    alert("Tiedot tuotu onnistuneesti!");
-                }
+            if (newState.length > 0 && confirm("Korvataanko nykyiset tiedot?")) {
+                state = newState;
+                sync();
             }
-            event.target.value = ''; // Nollataan syöte
+            event.target.value = '';
         };
         reader.readAsText(file);
     }
@@ -222,11 +219,8 @@
             let rStartTotal = 0, rGoalTotal = 0, rRemTotal = 0;
             room.categories.forEach(cat => {
                 const g = Math.ceil(cat.start / 3);
-                rStartTotal += cat.start;
-                rGoalTotal += g;
-                rRemTotal += cat.removed;
-                tGoal += g;
-                tRem += Math.min(g, cat.removed);
+                rStartTotal += cat.start; rGoalTotal += g; rRemTotal += cat.removed;
+                tGoal += g; tRem += Math.min(g, cat.removed);
             });
 
             const rPerc = rGoalTotal > 0 ? (rRemTotal / rGoalTotal) * 100 : 0;
@@ -235,10 +229,7 @@
             const dashItem = document.createElement('div');
             dashItem.className = 'dashboard-item';
             dashItem.innerHTML = `
-                <div class="dashboard-label">
-                    <span>${room.name} ${isRoomDone ? '🏆' : ''}</span>
-                    <span>${rRemTotal}/${rGoalTotal}</span>
-                </div>
+                <div class="dashboard-label"><span>${room.name} ${isRoomDone ? '🏆' : ''}</span><span>${rRemTotal}/${rGoalTotal}</span></div>
                 <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, rPerc)}%"></div></div>
             `;
             dashboard.appendChild(dashItem);
@@ -246,22 +237,12 @@
             const rDiv = document.createElement('div');
             rDiv.className = 'room-section';
             rDiv.innerHTML = `
-                <div class="flex">
-                    <h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2>
-                    <button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista huone</button>
-                </div>
-                <div class="room-summary">
-                    <strong>Huoneen kooste:</strong>
-                    <div>Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
-                </div>
+                <div class="flex"><h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista</button></div>
+                <div class="room-summary">Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
                 <div id="cat-list-${room.id}"></div>
                 <div class="category-form">
-                    <strong>+ Lisää uusi kategoria</strong>
-                    <div class="flex">
-                        <input type="text" id="catName-${room.id}" placeholder="Kategoria">
-                        <input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width: 80px;">
-                    </div>
-                    <button class="btn-add" onclick="handleAddCategory(${room.id})">Tallenna kategoria</button>
+                    <div class="flex"><input type="text" id="catName-${room.id}" placeholder="Kategoria"><input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width: 70px;"></div>
+                    <button class="btn-add" onclick="handleAddCategory(${room.id})">Lisää kategoria</button>
                 </div>
             `;
 
@@ -272,28 +253,19 @@
                 const cDiv = document.createElement('div');
                 cDiv.className = 'category-item';
                 cDiv.innerHTML = `
-                    <div class="flex">
-                        <strong>${cat.name}</strong>
-                        <button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button>
-                    </div>
-                    <div style="font-size:0.85em; margin: 8px 0;">
-                        Alussa: <strong>${cat.start} kpl</strong> | Tavoite: <strong>${goal}</strong>
+                    <div class="flex"><strong>${cat.name}</strong><button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button></div>
+                    <div style="font-size:0.8em; margin: 5px 0;">Alussa: ${cat.start} | Tavoite: ${goal}
                         <div class="edit-controls">
                             <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 1)">+1</button>
-                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 10)">+10</button>
                             <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -1)">-1</button>
-                            <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -10)">-10</button>
                         </div>
                     </div>
                     <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100, perc)}%; background: ${perc > 100 ? '#2ecc71' : '#27ae60'}"></div></div>
-                    <div class="flex">
-                        <span>Poistettu: <strong>${cat.removed}</strong> / ${goal}</span>
-                    </div>
-                    <div class="edit-controls">
-                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 1)">+1</button>
-                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 10)">+10</button>
-                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -1)">-1</button>
-                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -10)">-10</button>
+                    <div class="flex"><span>Poistettu: <strong>${cat.removed}</strong></span>
+                        <div class="edit-controls">
+                            <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 1)">+1</button>
+                            <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -1)">-1</button>
+                        </div>
                     </div>
                 `;
                 catList.appendChild(cDiv);
@@ -303,7 +275,7 @@
 
         const totalPerc = tGoal > 0 ? Math.round((tRem / tGoal) * 100) : 0;
         document.getElementById('main-bar').style.width = totalPerc + '%';
-        document.getElementById('overall').querySelector('strong').innerText = `Koko kodin edistyminen (tavoitteesta): ${totalPerc}%`;
+        document.getElementById('overall').querySelector('strong').innerText = `Koko kodin edistyminen: ${totalPerc}%`;
     }
 
     draw();
