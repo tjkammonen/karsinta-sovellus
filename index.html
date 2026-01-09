@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karsinta-apuri 1/3 | Pro Backup Edition</title>
+    <title>Karsinta-apuri 1/3 | Pro Sorted Edition</title>
     <style>
         :root { --p: #2d5a27; --bg: #f4f7f6; --white: #ffffff; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: #333; padding: 20px; line-height: 1.4; }
@@ -138,26 +138,14 @@
         sync();
     }
 
-    // TEKSTIMUOTOINEN SIIRTO
     function handleTextTransfer() {
         const currentData = JSON.stringify(state);
-        const input = prompt("Tässä on nykyinen tilasi tekstimuodossa. Voit kopioida sen talteen.\n\nTAI jos haluat tuoda tietoa, liitä aiemmin kopioimasi teksti tähän alle:", currentData);
-        
+        const input = prompt("Tässä on nykyinen tilasi tekstimuodossa. Kopioi se TAI liitä uusi teksti alle:", currentData);
         if (input !== null && input !== currentData) {
             try {
                 const parsed = JSON.parse(input);
-                if (Array.isArray(parsed)) {
-                    if (confirm("Haluatko varmasti korvata nykyiset tiedot tällä tekstityksellä?")) {
-                        state = parsed;
-                        sync();
-                        alert("Tila päivitetty!");
-                    }
-                } else {
-                    alert("Virheellinen tekstimuoto.");
-                }
-            } catch (e) {
-                alert("Tekstin luku epäonnistui. Varmista, että kopioit koko tekstin.");
-            }
+                if (Array.isArray(parsed)) { if (confirm("Korvataanko nykyiset tiedot?")) { state = parsed; sync(); } }
+            } catch (e) { alert("Virhe tekstin luvussa."); }
         }
     }
 
@@ -171,12 +159,10 @@
                 csvRows.push(`${room.name};${cat.name};${cat.start};${goal};${cat.removed};${perc}%`);
             });
         });
-        const csvString = csvRows.join("\n");
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvString], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
-        link.href = url;
-        link.download = `karsintaraportti_${new Date().toLocaleDateString()}.csv`;
+        link.href = URL.createObjectURL(blob);
+        link.download = `karsinta_${new Date().toLocaleDateString()}.csv`;
         link.click();
     }
 
@@ -190,18 +176,11 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 const cols = lines[i].split(';');
-                if (cols.length < 5) continue;
                 let room = newState.find(r => r.name === cols[0].trim());
-                if (!room) {
-                    room = { id: Date.now() + i, name: cols[0].trim(), categories: [] };
-                    newState.push(room);
-                }
+                if (!room) { room = { id: Date.now() + i, name: cols[0].trim(), categories: [] }; newState.push(room); }
                 room.categories.push({ id: Date.now() + i + 500, name: cols[1].trim(), start: parseInt(cols[2]) || 0, removed: parseInt(cols[4]) || 0 });
             }
-            if (newState.length > 0 && confirm("Korvataanko nykyiset tiedot?")) {
-                state = newState;
-                sync();
-            }
+            if (newState.length > 0 && confirm("Tuodaanko tiedot?")) { state = newState; sync(); }
             event.target.value = '';
         };
         reader.readAsText(file);
@@ -215,7 +194,18 @@
         
         let tGoal = 0, tRem = 0;
 
-        state.forEach(room => {
+        // LAJITTELU: Lasketaan prosentit väliaikaisesti lajittelua varten
+        const sortedRooms = [...state].map(room => {
+            let rGoal = 0, rRem = 0;
+            room.categories.forEach(cat => {
+                const g = Math.ceil(cat.start / 3);
+                rGoal += g;
+                rRem += cat.removed;
+            });
+            return { ...room, sortPerc: rGoal > 0 ? (rRem / rGoal) : -1 };
+        }).sort((a, b) => b.sortPerc - a.sortPerc);
+
+        sortedRooms.forEach(room => {
             let rStartTotal = 0, rGoalTotal = 0, rRemTotal = 0;
             room.categories.forEach(cat => {
                 const g = Math.ceil(cat.start / 3);
