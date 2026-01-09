@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karsinta-apuri 1/3 | Pro Backup Edition</title>
+    <style>
+        :root { --p: #2d5a27; --bg: #f4f7f6; --white: #ffffff; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: #333; padding: 20px; line-height: 1.4; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: var(--white); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1, h2 { color: var(--p); margin-top: 0; }
+        
+        .dashboard-item { margin-bottom: 10px; font-size: 0.9em; }
+        .dashboard-label { display: flex; justify-content: space-between; margin-bottom: 3px; }
+
+        .room-section { border: 2px solid var(--p); border-radius: 12px; padding: 15px; margin-bottom: 20px; background: var(--white); }
+        .room-summary { background: #eef2ed; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--p); }
+        .category-item { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        
+        .bar-bg { background: #eee; height: 12px; border-radius: 6px; margin: 8px 0; overflow: hidden; }
+        .bar-fill { background: #27ae60; height: 100%; width: 0%; transition: width 0.3s; }
+        .bar-room { background: var(--p); }
+        
+        .flex { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+        button { padding: 10px 15px; border: none; border-radius: 6px; background: var(--p); color: white; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #27ae60; margin-top: 10px; }
+        .btn-edit { background: #d35400; font-size: 0.75em; padding: 4px 8px; }
+        .btn-del { background: #c0392b; font-size: 0.8em; }
+        .btn-sec { background: #7f8c8d; }
+        .btn-small { padding: 5px 10px; font-size: 0.85em; }
+        
+        .export-import-area { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-export { background: #2980b9; flex: 1; }
+        .btn-import { background: #8e44ad; flex: 1; }
+        #fileInput { display: none; }
+
+        .category-form { background: #eef2ed; padding: 10px; border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .edit-controls { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="card">
+        <h1>Karsinta-apuri 1/3</h1>
+        <div id="overall">
+            <strong>Koko kodin edistyminen: 0%</strong>
+            <div class="bar-bg"><div id="main-bar" class="bar-fill"></div></div>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+        
+        <div id="room-dashboard">
+            <p style="font-size: 0.8em; color: #666;">Ei vielä huoneita listattuna.</p>
+        </div>
+
+        <div class="export-import-area">
+            <button class="btn-export" onclick="exportToCSV()">📥 Vie CSV</button>
+            <button class="btn-import" onclick="document.getElementById('fileInput').click()">📤 Tuo CSV</button>
+            <input type="file" id="fileInput" accept=".csv" onchange="importFromCSV(event)">
+        </div>
+    </header>
+
+    <div class="card">
+        <h3>Luo uusi huone</h3>
+        <div class="flex">
+            <input type="text" id="roomInput" placeholder="Esim. Keittiö">
+            <button onclick="handleCreateRoom()">Lisää</button>
+        </div>
+    </div>
+
+    <div id="roomContainer"></div>
+</div>
+
+<script>
+    let state = JSON.parse(localStorage.getItem('karsinta_final_v1')) || [];
+
+    function sync() {
+        localStorage.setItem('karsinta_final_v1', JSON.stringify(state));
+        draw();
+    }
+
+    function handleCreateRoom() {
+        const name = document.getElementById('roomInput').value;
+        if (!name) return;
+        state.push({
+            id: Date.now(),
+            name: name,
+            categories: [{ id: Date.now()+1, name: "Tavarat", start: 0, removed: 0 }]
+        });
+        document.getElementById('roomInput').value = '';
+        sync();
+    }
+
+    function handleAddCategory(roomId) {
+        const nameInput = document.getElementById(`catName-${roomId}`);
+        const countInput = document.getElementById(`catCount-${roomId}`);
+        const name = nameInput.value;
+        const count = parseInt(countInput.value);
+
+        if (name && !isNaN(count)) {
+            const room = state.find(r => r.id === roomId);
+            room.categories.push({ id: Date.now(), name: name, start: count, removed: 0 });
+            nameInput.value = '';
+            countInput.value = '';
+            sync();
+        }
+    }
+
+    function handleEditStartAmount(roomId, catId, delta) {
+        const room = state.find(r => r.id === roomId);
+        const cat = room.categories.find(c => c.id === catId);
+        cat.start = Math.max(0, cat.start + delta);
+        sync();
+    }
+
+    function handleUpdateRemoved(roomId, catId, delta) {
+        const room = state.find(r => r.id === roomId);
+        const cat = room.categories.find(c => c.id === catId);
+        cat.removed = Math.max(0, cat.removed + delta);
+        sync();
+    }
+
+    function handleDeleteRoom(roomId) {
+        if (confirm("Poistetaanko huone?")) {
+            state = state.filter(r => r.id !== roomId);
+            sync();
+        }
+    }
+
+    function handleDeleteCat(roomId, catId) {
+        const room = state.find(r => r.id === roomId);
+        room.categories = room.categories.filter(c => c.id !== catId);
+        sync();
+    }
+
+    function exportToCSV() {
+        if (state.length === 0) {
+            alert("Ei tietoja vietäväksi!");
+            return;
+        }
+        let csvRows = ["Huone;Kategoria;Alkumäärä;Tavoite (1/3);Poistettu;Edistyminen %"];
+        state.forEach(room => {
+            room.categories.forEach(cat => {
+                const goal = Math.ceil(cat.start / 3);
+                const perc = goal > 0 ? Math.round((cat.removed / goal) * 100) : 0;
+                csvRows.push(`${room.name};${cat.name};${cat.start};${goal};${cat.removed};${perc}%`);
+            });
+        });
+        const csvString = csvRows.join("\n");
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `karsintaraportti_${new Date().toLocaleDateString()}.csv`;
+        link.click();
+    }
+
+    // UUSI TOIMINTO: CSV-TUONTI
+    function importFromCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/);
+            
+            if (lines.length < 2) return;
+
+            const newState = [];
+            // Aloitetaan riviltä 1 (otsikko ohitetaan)
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                const cols = lines[i].split(';');
+                if (cols.length < 5) continue;
+
+                const roomName = cols[0].trim();
+                const catName = cols[1].trim();
+                const startNum = parseInt(cols[2]) || 0;
+                const removedNum = parseInt(cols[4]) || 0;
+
+                // Etsitään onko huone jo lisätty uuteen tilaan
+                let room = newState.find(r => r.name === roomName);
+                if (!room) {
+                    room = { id: Date.now() + i, name: roomName, categories: [] };
+                    newState.push(room);
+                }
+                
+                room.categories.push({
+                    id: Date.now() + i + 100,
+                    name: catName,
+                    start: startNum,
+                    removed: removedNum
+                });
+            }
+
+            if (newState.length > 0) {
+                if (confirm("Haluatko korvata nykyiset tiedot tuoduilla tiedoilla?")) {
+                    state = newState;
+                    sync();
+                    alert("Tiedot tuotu onnistuneesti!");
+                }
+            }
+            event.target.value = ''; // Nollataan syöte
+        };
+        reader.readAsText(file);
+    }
+
+    function draw() {
+        const container = document.getElementById('roomContainer');
+        const dashboard = document.getElementById('room-dashboard');
+        container.innerHTML = '';
+        dashboard.innerHTML = '<h3>Huoneiden tilanne</h3>';
+        
+        let tGoal = 0, tRem = 0;
+
+        state.forEach(room => {
+            let rStartTotal = 0, rGoalTotal = 0, rRemTotal = 0;
+            room.categories.forEach(cat => {
+                const g = Math.ceil(cat.start / 3);
+                rStartTotal += cat.start;
+                rGoalTotal += g;
+                rRemTotal += cat.removed;
+                tGoal += g;
+                tRem += Math.min(g, cat.removed);
+            });
+
+            const rPerc = rGoalTotal > 0 ? (rRemTotal / rGoalTotal) * 100 : 0;
+            const isRoomDone = rGoalTotal > 0 && rRemTotal >= rGoalTotal;
+
+            const dashItem = document.createElement('div');
+            dashItem.className = 'dashboard-item';
+            dashItem.innerHTML = `
+                <div class="dashboard-label">
+                    <span>${room.name} ${isRoomDone ? '🏆' : ''}</span>
+                    <span>${rRemTotal}/${rGoalTotal}</span>
+                </div>
+                <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, rPerc)}%"></div></div>
+            `;
+            dashboard.appendChild(dashItem);
+
+            const rDiv = document.createElement('div');
+            rDiv.className = 'room-section';
+            rDiv.innerHTML = `
+                <div class="flex">
+                    <h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2>
+                    <button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista huone</button>
+                </div>
+                <div class="room-summary">
+                    <strong>Huoneen kooste:</strong>
+                    <div>Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
+                </div>
+                <div id="cat-list-${room.id}"></div>
+                <div class="category-form">
+                    <strong>+ Lisää uusi kategoria</strong>
+                    <div class="flex">
+                        <input type="text" id="catName-${room.id}" placeholder="Kategoria">
+                        <input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width: 80px;">
+                    </div>
+                    <button class="btn-add" onclick="handleAddCategory(${room.id})">Tallenna kategoria</button>
+                </div>
+            `;
+
+            const catList = rDiv.querySelector(`#cat-list-${room.id}`);
+            room.categories.forEach(cat => {
+                const goal = Math.ceil(cat.start / 3);
+                const perc = goal > 0 ? (cat.removed / goal) * 100 : 0;
+                const cDiv = document.createElement('div');
+                cDiv.className = 'category-item';
+                cDiv.innerHTML = `
+                    <div class="flex">
+                        <strong>${cat.name}</strong>
+                        <button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button>
+                    </div>
+                    <div style="font-size:0.85em; margin: 8px 0;">
+                        Alussa: <strong>${cat.start} kpl</strong> | Tavoite: <strong>${goal}</strong>
+                        <div class="edit-controls">
+                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 1)">+1</button>
+                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 10)">+10</button>
+                            <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -1)">-1</button>
+                            <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -10)">-10</button>
+                        </div>
+                    </div>
+                    <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100, perc)}%; background: ${perc > 100 ? '#2ecc71' : '#27ae60'}"></div></div>
+                    <div class="flex">
+                        <span>Poistettu: <strong>${cat.removed}</strong> / ${goal}</span>
+                    </div>
+                    <div class="edit-controls">
+                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 1)">+1</button>
+                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 10)">+10</button>
+                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -1)">-1</button>
+                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -10)">-10</button>
+                    </div>
+                `;
+                catList.appendChild(cDiv);
+            });
+            container.appendChild(rDiv);
+        });
+
+        const totalPerc = tGoal > 0 ? Math.round((tRem / tGoal) * 100) : 0;
+        document.getElementById('main-bar').style.width = totalPerc + '%';
+        document.getElementById('overall').querySelector('strong').innerText = `Koko kodin edistyminen (tavoitteesta): ${totalPerc}%`;
+    }
+
+    draw();
+</script>
+</body>
+</html>
