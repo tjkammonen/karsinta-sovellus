@@ -26,10 +26,10 @@
         input, textarea { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
         button { padding: 10px 15px; border: none; border-radius: 6px; background: var(--p); color: white; cursor: pointer; font-weight: bold; }
         .btn-add { background: #27ae60; margin-top: 10px; }
-        .btn-edit { background: #d35400; font-size: 0.75em; padding: 4px 8px; }
+        .btn-edit { background: #d35400; font-size: 0.7em; padding: 3px 6px; }
         .btn-del { background: #c0392b; font-size: 0.8em; }
         .btn-sec { background: #7f8c8d; }
-        .btn-small { padding: 5px 10px; font-size: 0.85em; }
+        .btn-small { padding: 4px 8px; font-size: 0.8em; }
         
         .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .btn-export { background: #2980b9; }
@@ -38,7 +38,8 @@
         #fileInput { display: none; }
 
         .category-form { background: #eef2ed; padding: 10px; border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
-        .edit-controls { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+        .edit-controls { display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap; align-items: center; }
+        .control-label { font-size: 0.8em; color: #666; width: 100%; margin-bottom: 2px; }
     </style>
 </head>
 <body>
@@ -140,7 +141,7 @@
 
     function handleTextTransfer() {
         const currentData = JSON.stringify(state);
-        const input = prompt("Tässä on nykyinen tilasi tekstimuodossa. Kopioi se TAI liitä uusi teksti alle:", currentData);
+        const input = prompt("Tila tekstimuodossa. Kopioi se TAI liitä uusi teksti alle:", currentData);
         if (input !== null && input !== currentData) {
             try {
                 const parsed = JSON.parse(input);
@@ -194,7 +195,6 @@
         
         let tGoal = 0, tRem = 0;
 
-        // LAJITTELU: Lasketaan prosentit väliaikaisesti lajittelua varten
         const sortedRooms = [...state].map(room => {
             let rGoal = 0, rRem = 0;
             room.categories.forEach(cat => {
@@ -227,12 +227,12 @@
             const rDiv = document.createElement('div');
             rDiv.className = 'room-section';
             rDiv.innerHTML = `
-                <div class="flex"><h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista</button></div>
+                <div class="flex"><h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista huone</button></div>
                 <div class="room-summary">Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
                 <div id="cat-list-${room.id}"></div>
                 <div class="category-form">
                     <div class="flex"><input type="text" id="catName-${room.id}" placeholder="Kategoria"><input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width: 70px;"></div>
-                    <button class="btn-add" onclick="handleAddCategory(${room.id})">Lisää kategoria</button>
+                    <button class="btn-add" onclick="handleAddCategory(${room.id})">Tallenna kategoria</button>
                 </div>
             `;
 
@@ -244,18 +244,30 @@
                 cDiv.className = 'category-item';
                 cDiv.innerHTML = `
                     <div class="flex"><strong>${cat.name}</strong><button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button></div>
-                    <div style="font-size:0.8em; margin: 5px 0;">Alussa: ${cat.start} | Tavoite: ${goal}
+                    <div style="font-size:0.85em; margin: 8px 0;">
+                        Alussa: <strong>${cat.start} kpl</strong> | Tavoite: <strong>${goal}</strong>
                         <div class="edit-controls">
-                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 1)">+1</button>
+                            <div class="control-label">Muuta alkuperäistä määrää:</div>
+                            <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -10)">-10</button>
+                            <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -5)">-5</button>
                             <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -1)">-1</button>
+                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 1)">+1</button>
+                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 5)">+5</button>
+                            <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 10)">+10</button>
                         </div>
                     </div>
                     <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100, perc)}%; background: ${perc > 100 ? '#2ecc71' : '#27ae60'}"></div></div>
-                    <div class="flex"><span>Poistettu: <strong>${cat.removed}</strong></span>
-                        <div class="edit-controls">
-                            <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 1)">+1</button>
-                            <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -1)">-1</button>
-                        </div>
+                    <div class="flex">
+                        <span>Poistettu: <strong>${cat.removed}</strong> / ${goal}</span>
+                    </div>
+                    <div class="edit-controls">
+                        <div class="control-label">Merkkaa poistoja:</div>
+                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -10)">-10</button>
+                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -5)">-5</button>
+                        <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -1)">-1</button>
+                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 1)">+1</button>
+                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 5)">+5</button>
+                        <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 10)">+10</button>
                     </div>
                 `;
                 catList.appendChild(cDiv);
