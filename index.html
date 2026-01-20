@@ -140,6 +140,14 @@
     }
 
     function handleDeleteRoom(roomId) {
+        const room = state.find(r => r.id === roomId);
+        const hasLockedCategories = room.categories.some(cat => cat.locked);
+        
+        if (hasLockedCategories) {
+            alert("Huonetta ei voi poistaa, koska se sisältää lukittuja kategorioita. Avaa lukitus muokataksesi huonetta.");
+            return;
+        }
+
         if (confirm("Poistetaanko huone?")) {
             state = state.filter(r => r.id !== roomId);
             sync();
@@ -229,6 +237,7 @@
 
             const rPerc = rGoalTotal > 0 ? (rRemTotal / rGoalTotal) * 100 : 0;
             const isRoomDone = rGoalTotal > 0 && rRemTotal >= rGoalTotal;
+            const diff = rRemTotal - rGoalTotal;
 
             const dashItem = document.createElement('div');
             dashItem.className = 'dashboard-item';
@@ -242,7 +251,16 @@
             rDiv.className = 'room-section';
             rDiv.innerHTML = `
                 <div class="flex"><h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista huone</button></div>
-                <div class="room-summary">Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
+                <div class="room-summary">
+                    <strong>Huoneen kooste:</strong>
+                    <div>Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
+                    <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, rPerc)}%"></div></div>
+                    <div style="font-size: 0.85em; margin-top: 5px; font-weight: bold;">
+                        ${diff >= 0 ? 
+                            `Tavoite saavutettu ja ylitetty ${diff} tavaralla 💪` : 
+                            `Vielä ${Math.abs(diff)} tavaraa tavoitteeseen 🧐`}
+                    </div>
+                </div>
                 <div id="cat-list-${room.id}"></div>
                 <div class="category-form">
                     <div class="flex"><input type="text" id="catName-${room.id}" placeholder="Kategoria"><input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width: 70px;"></div>
