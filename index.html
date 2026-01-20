@@ -16,7 +16,8 @@
 
         .room-section { border: 2px solid var(--p); border-radius: 12px; padding: 15px; margin-bottom: 20px; background: var(--white); }
         .room-summary { background: #eef2ed; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed var(--p); }
-        .category-item { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 10px; }
+        .category-item { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 10px; transition: opacity 0.3s; }
+        .category-item.locked { border-color: #27ae60; background: #f0fff4; }
         
         .bar-bg { background: #eee; height: 12px; border-radius: 6px; margin: 8px 0; overflow: hidden; }
         .bar-fill { background: #27ae60; height: 100%; width: 0%; transition: width 0.3s; }
@@ -30,6 +31,8 @@
         .btn-del { background: #c0392b; font-size: 0.8em; }
         .btn-sec { background: #7f8c8d; }
         .btn-small { padding: 4px 8px; font-size: 0.8em; }
+        .btn-lock { background: #27ae60; font-size: 0.8em; margin-left: 5px; }
+        .btn-unlock { background: #e67e22; font-size: 0.8em; margin-left: 5px; }
         
         .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
         .btn-export { background: #2980b9; }
@@ -40,6 +43,7 @@
         .category-form { background: #eef2ed; padding: 10px; border-radius: 8px; margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
         .edit-controls { display: flex; gap: 3px; margin-top: 5px; flex-wrap: wrap; align-items: center; }
         .control-label { font-size: 0.8em; color: #666; width: 100%; margin-bottom: 2px; }
+        .locked-badge { color: #27ae60; font-weight: bold; font-size: 0.9em; }
     </style>
 </head>
 <body>
@@ -91,7 +95,7 @@
         state.push({
             id: Date.now(),
             name: name,
-            categories: [{ id: Date.now()+1, name: "Tavarat", start: 0, removed: 0 }]
+            categories: [{ id: Date.now()+1, name: "Tavarat", start: 0, removed: 0, locked: false }]
         });
         document.getElementById('roomInput').value = '';
         sync();
@@ -105,7 +109,7 @@
 
         if (name && !isNaN(count)) {
             const room = state.find(r => r.id === roomId);
-            room.categories.push({ id: Date.now(), name: name, start: count, removed: 0 });
+            room.categories.push({ id: Date.now(), name: name, start: count, removed: 0, locked: false });
             nameInput.value = '';
             countInput.value = '';
             sync();
@@ -115,6 +119,7 @@
     function handleEditStartAmount(roomId, catId, delta) {
         const room = state.find(r => r.id === roomId);
         const cat = room.categories.find(c => c.id === catId);
+        if (cat.locked) return;
         cat.start = Math.max(0, cat.start + delta);
         sync();
     }
@@ -122,7 +127,15 @@
     function handleUpdateRemoved(roomId, catId, delta) {
         const room = state.find(r => r.id === roomId);
         const cat = room.categories.find(c => c.id === catId);
+        if (cat.locked) return;
         cat.removed = Math.max(0, cat.removed + delta);
+        sync();
+    }
+
+    function handleToggleLock(roomId, catId) {
+        const room = state.find(r => r.id === roomId);
+        const cat = room.categories.find(c => c.id === catId);
+        cat.locked = !cat.locked;
         sync();
     }
 
@@ -177,9 +190,10 @@
             for (let i = 1; i < lines.length; i++) {
                 if (!lines[i].trim()) continue;
                 const cols = lines[i].split(';');
+                if (cols.length < 5) continue;
                 let room = newState.find(r => r.name === cols[0].trim());
                 if (!room) { room = { id: Date.now() + i, name: cols[0].trim(), categories: [] }; newState.push(room); }
-                room.categories.push({ id: Date.now() + i + 500, name: cols[1].trim(), start: parseInt(cols[2]) || 0, removed: parseInt(cols[4]) || 0 });
+                room.categories.push({ id: Date.now() + i + 500, name: cols[1].trim(), start: parseInt(cols[2]) || 0, removed: parseInt(cols[4]) || 0, locked: false });
             }
             if (newState.length > 0 && confirm("Tuodaanko tiedot?")) { state = newState; sync(); }
             event.target.value = '';
@@ -240,12 +254,21 @@
             room.categories.forEach(cat => {
                 const goal = Math.ceil(cat.start / 3);
                 const perc = goal > 0 ? (cat.removed / goal) * 100 : 0;
+                const isLocked = !!cat.locked;
+
                 const cDiv = document.createElement('div');
-                cDiv.className = 'category-item';
+                cDiv.className = `category-item ${isLocked ? 'locked' : ''}`;
                 cDiv.innerHTML = `
-                    <div class="flex"><strong>${cat.name}</strong><button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button></div>
+                    <div class="flex">
+                        <strong>${cat.name} ${isLocked ? '🎉' : ''}</strong>
+                        <div class="flex">
+                            <button class="${isLocked ? 'btn-unlock' : 'btn-lock'}" onclick="handleToggleLock(${room.id}, ${cat.id})">${isLocked ? 'Muokkaa' : 'Lukitse valmiiksi'}</button>
+                            <button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button>
+                        </div>
+                    </div>
                     <div style="font-size:0.85em; margin: 8px 0;">
                         Alussa: <strong>${cat.start} kpl</strong> | Tavoite: <strong>${goal}</strong>
+                        ${!isLocked ? `
                         <div class="edit-controls">
                             <div class="control-label">Muuta alkuperäistä määrää:</div>
                             <button class="btn-edit btn-sec" onclick="handleEditStartAmount(${room.id}, ${cat.id}, -10)">-10</button>
@@ -254,12 +277,14 @@
                             <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 1)">+1</button>
                             <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 5)">+5</button>
                             <button class="btn-edit" onclick="handleEditStartAmount(${room.id}, ${cat.id}, 10)">+10</button>
-                        </div>
+                        </div>` : ''}
                     </div>
                     <div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100, perc)}%; background: ${perc > 100 ? '#2ecc71' : '#27ae60'}"></div></div>
                     <div class="flex">
                         <span>Poistettu: <strong>${cat.removed}</strong> / ${goal}</span>
+                        ${isLocked ? '<span class="locked-badge">Valmis! 🎉</span>' : ''}
                     </div>
+                    ${!isLocked ? `
                     <div class="edit-controls">
                         <div class="control-label">Merkkaa poistoja:</div>
                         <button class="btn-small btn-sec" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, -10)">-10</button>
@@ -268,7 +293,7 @@
                         <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 1)">+1</button>
                         <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 5)">+5</button>
                         <button class="btn-small" onclick="handleUpdateRemoved(${room.id}, ${cat.id}, 10)">+10</button>
-                    </div>
+                    </div>` : ''}
                 `;
                 catList.appendChild(cDiv);
             });
