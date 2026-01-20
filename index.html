@@ -263,7 +263,7 @@
                         <strong>${cat.name} ${isLocked ? '🎉' : ''}</strong>
                         <div class="flex">
                             <button class="${isLocked ? 'btn-unlock' : 'btn-lock'}" onclick="handleToggleLock(${room.id}, ${cat.id})">${isLocked ? 'Muokkaa' : 'Lukitse valmiiksi'}</button>
-                            <button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button>
+                            ${!isLocked ? `<button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button>` : ''}
                         </div>
                     </div>
                     <div style="font-size:0.85em; margin: 8px 0;">
