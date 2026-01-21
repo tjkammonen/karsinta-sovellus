@@ -1,5 +1,4 @@
 const expandedState = new Set();
-// Oletusjärjestys: Vanhin ensin (kuten aiemmin)
 let currentSort = 'created-asc'; 
 
 function handleToggleExpand(roomId) {
@@ -11,7 +10,6 @@ function handleToggleExpand(roomId) {
     draw();
 }
 
-// Käsittelee lajitteluvalikon muutoksen
 function handleSortChange(value) {
     currentSort = value;
     draw();
@@ -23,18 +21,19 @@ function draw() {
     if (!container || !dashboard) return;
 
     container.innerHTML = '';
-    dashboard.innerHTML = '<h3>Huoneiden tilanne</h3>';
+    dashboard.innerHTML = ''; // Tyhjennetään koko dashboard
     
-    // 1. Data ja Tilastot
-    let globalGoal = 0;
-    let globalRem = 0;
-
+    // 1. LASKETAAN GLOBAALIT TILASTOT
+    let totalStart = 0;
+    let totalGoal = 0;
+    let totalRem = 0;
+    
+    // Käydään läpi data kertaalleen laskentaa varten
     const processedRooms = state.map(room => {
-        // Varmistetaan kentät
         if (room.pinned === undefined) room.pinned = false;
-        if (room.lastEdited === undefined) room.lastEdited = room.id; // Fallback luomisaikaan
+        if (room.lastEdited === undefined) room.lastEdited = room.id;
 
-        let rGoal = 0, rRem = 0, rStart = 0;
+        let rStart = 0, rGoal = 0, rRem = 0;
         room.categories.forEach(cat => {
             const g = Math.ceil(cat.start / 3);
             rStart += cat.start;
@@ -42,8 +41,10 @@ function draw() {
             rRem += cat.removed;
         });
 
-        globalGoal += rGoal;
-        globalRem += rRem;
+        // Summataan globaaleihin
+        totalStart += rStart;
+        totalGoal += rGoal;
+        totalRem += rRem;
         
         const rPerc = rGoal > 0 ? (rRem / rGoal) * 100 : 0;
         
@@ -54,32 +55,73 @@ function draw() {
         };
     });
 
-    // 2. Dashboard (Tulostaulu)
-    const dashboardList = [...processedRooms].sort((a, b) => b.rPerc - a.rPerc);
-    
-    if (dashboardList.length === 0) {
-        dashboard.innerHTML += '<p class="empty-msg">Ei vielä huoneita.</p>';
+    // Lasketaan globaali prosentti
+    const globalPerc = totalGoal > 0 ? Math.round((totalRem / totalGoal) * 100) : 0;
+    const globalDiff = totalRem - totalGoal;
+
+    // 2. PIIRRETÄÄN KOKONAISTILANNE (SUMMARY CARD)
+    // Tämä tulee nyt ylimmäksi dashboardiin
+    if (state.length > 0) {
+        dashboard.innerHTML += `
+            <div class="overall-summary">
+                <div class="flex" style="margin-bottom:5px;">
+                    <strong style="font-size:1.1em; color:var(--text);">Koko asunnon tilanne</strong>
+                    <strong style="color:var(--p); font-size:1.2em;">${globalPerc}%</strong>
+                </div>
+                
+                <div class="bar-bg" style="height:16px;">
+                    <div class="bar-fill" style="width:${Math.min(100, globalPerc)}%"></div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Löydetty yhteensä</span>
+                        <span class="stat-value">${totalStart} kpl</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Poistettu</span>
+                        <span class="stat-value">${totalRem} kpl</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Tavoite (1/3)</span>
+                        <span class="stat-value">${totalGoal} kpl</span>
+                    </div>
+                </div>
+                
+                <div style="text-align:center; margin-top:10px; font-size:0.9em; font-weight:bold; color: ${globalDiff >= 0 ? 'var(--p)' : '#666'};">
+                    ${globalDiff >= 0 ? 
+                        `🎉 Olet poistanut ${globalDiff} tavaraa yli tavoitteen!` : 
+                        `Matkaa tavoitteeseen vielä ${Math.abs(globalDiff)} tavaraa.`}
+                </div>
+            </div>
+            <h3 style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">Huoneiden parhaimmisto</h3>
+        `;
     } else {
-        dashboardList.forEach(room => {
-            dashboard.innerHTML += `
-                <div class="dashboard-item">
-                    <div class="dashboard-label">
-                        <span>${room.name} ${room.pinned ? '⭐' : ''} ${room.rPerc >= 100 ? '🏆' : ''}</span>
-                        <span>${room.rRem}/${room.rGoal}</span>
-                    </div>
-                    <div class="bar-bg">
-                        <div class="bar-fill bar-room" style="width:${Math.min(100, room.rPerc)}%"></div>
-                    </div>
-                </div>`;
-        });
+        dashboard.innerHTML = '<p class="empty-msg">Aloita lisäämällä ensimmäinen huone.</p>';
     }
 
-    // 3. Lajitteluvalikko (Lisätään vain jos huoneita on olemassa)
+    // 3. PIIRRETÄÄN TULOSTAULU (TOP LIST)
+    const dashboardList = [...processedRooms].sort((a, b) => b.rPerc - a.rPerc);
+    
+    dashboardList.forEach(room => {
+        dashboard.innerHTML += `
+            <div class="dashboard-item">
+                <div class="dashboard-label">
+                    <span>${room.name} ${room.pinned ? '⭐' : ''} ${room.rPerc >= 100 ? '🏆' : ''}</span>
+                    <span>${room.rRem}/${room.rGoal}</span>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill bar-room" style="width:${Math.min(100, room.rPerc)}%"></div>
+                </div>
+            </div>`;
+    });
+
+    // 4. LAJITTELUVALIKKO
     if (processedRooms.length > 0) {
         const sortDiv = document.createElement('div');
         sortDiv.className = 'sort-container';
         sortDiv.innerHTML = `
-            <label>Järjestä:</label>
+            <label>Järjestä huoneet:</label>
             <select onchange="handleSortChange(this.value)" class="sort-select">
                 <option value="created-asc" ${currentSort === 'created-asc' ? 'selected' : ''}>Vanhin ensin</option>
                 <option value="last-edited" ${currentSort === 'last-edited' ? 'selected' : ''}>Viimeksi muokattu</option>
@@ -90,23 +132,17 @@ function draw() {
         container.appendChild(sortDiv);
     }
 
-    // 4. Huonekortit - JÄRJESTYSLOGIIKKA
+    // 5. HUONEKORTIT
     const roomList = [...processedRooms].sort((a, b) => {
-        // Ensisijainen sääntö: Pinned aina kärkeen
         if (a.pinned && !b.pinned) return -1; 
         if (!a.pinned && b.pinned) return 1;  
         
-        // Toissijainen sääntö: Valittu järjestys
         switch (currentSort) {
-            case 'last-edited':
-                return b.lastEdited - a.lastEdited; // Uusin aika ensin
-            case 'progress-desc':
-                return b.rPerc - a.rPerc; // Isoin % ensin
-            case 'alpha-asc':
-                return a.name.localeCompare(b.name); // A-Ö
+            case 'last-edited': return b.lastEdited - a.lastEdited;
+            case 'progress-desc': return b.rPerc - a.rPerc;
+            case 'alpha-asc': return a.name.localeCompare(b.name);
             case 'created-asc':
-            default:
-                return a.id - b.id; // Vanhin ID ensin
+            default: return a.id - b.id;
         }
     });
 
@@ -208,23 +244,6 @@ function draw() {
         
         container.appendChild(rDiv);
     });
-
-    // 4. Kokonaistilanne
-    let totalGoal = 0;
-    let totalRem = 0;
-    
-    state.forEach(r => {
-        r.categories.forEach(c => {
-           totalGoal += Math.ceil(c.start/3);
-           totalRem += c.removed; 
-        });
-    });
-
-    const totalPerc = totalGoal > 0 ? Math.round((totalRem / totalGoal) * 100) : 0;
-    
-    if (mainBar) mainBar.style.width = Math.min(100, totalPerc) + '%';
-    const overallText = document.querySelector('#overall strong');
-    if (overallText) overallText.innerText = `Koko kodin edistyminen: ${totalPerc}%`;
 }
 
 draw();
