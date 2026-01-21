@@ -27,10 +27,20 @@
         input, textarea { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
         button { padding: 10px 15px; border: none; border-radius: 6px; background: var(--p); color: white; cursor: pointer; font-weight: bold; }
         .btn-add { background: #27ae60; margin-top: 10px; }
-        .btn-edit { background: #d35400; font-size: 0.7em; padding: 3px 6px; }
+        .btn-edit { background: #d35400;  padding: 12px 16px; 
+            font-size: 1.1em; 
+            min-width: 50px; 
+            margin: 4px 2px;}
         .btn-del { background: #c0392b; font-size: 0.8em; }
         .btn-sec { background: #7f8c8d; }
-        .btn-small { padding: 4px 8px; font-size: 0.8em; }
+        
+        .btn-small { 
+            padding: 12px 16px; 
+            font-size: 1.1em; 
+            min-width: 50px; 
+            margin: 4px 2px;
+        }
+
         .btn-lock { background: #27ae60; font-size: 0.8em; margin-left: 5px; }
         .btn-unlock { background: #e67e22; font-size: 0.8em; margin-left: 5px; }
         
@@ -128,7 +138,15 @@
         const room = state.find(r => r.id === roomId);
         const cat = room.categories.find(c => c.id === catId);
         if (cat.locked) return;
-        cat.removed = Math.max(0, cat.removed + delta);
+        
+        const newRemoved = Math.max(0, cat.removed + delta);
+        cat.removed = newRemoved;
+
+        // Logiikka: Jos poistettuja on enemmän kuin alkutilanteessa, kasvatetaan alkutilannetta
+        if (cat.removed > cat.start) {
+            cat.start = cat.removed;
+        }
+        
         sync();
     }
 
@@ -250,7 +268,7 @@
             const rDiv = document.createElement('div');
             rDiv.className = 'room-section';
             rDiv.innerHTML = `
-                <div class="flex"><h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista huone</button></div>
+                <div class="flex"><h2>${room.name} ${isRoomDone ? '🏆' : ''}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista</button></div>
                 <div class="room-summary">
                     <strong>Huoneen kooste:</strong>
                     <div>Tavaroita: ${rStartTotal} | Poistettu: ${rRemTotal} / ${rGoalTotal}</div>
@@ -280,7 +298,7 @@
                     <div class="flex">
                         <strong>${cat.name} ${isLocked ? '🎉' : ''}</strong>
                         <div class="flex">
-                            <button class="${isLocked ? 'btn-unlock' : 'btn-lock'}" onclick="handleToggleLock(${room.id}, ${cat.id})">${isLocked ? 'Muokkaa' : 'Lukitse valmiiksi'}</button>
+                            <button class="${isLocked ? 'btn-unlock' : 'btn-lock'}" onclick="handleToggleLock(${room.id}, ${cat.id})">${isLocked ? 'Muokkaa' : 'Lukitse'}</button>
                             ${!isLocked ? `<button class="btn-del btn-small" onclick="handleDeleteCat(${room.id}, ${cat.id})">×</button>` : ''}
                         </div>
                     </div>
