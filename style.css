@@ -1,13 +1,18 @@
 :root { 
-    --p: #2d5a27; 
-    --bg: #f4f7f6; 
-    --white: #ffffff; 
+    /* UUSI VÄRIPALETTI */
+    --p: #4A9E9C;       /* Pääväri: Murrettu Turkoosi */
+    --accent: #FF8C42;  /* Tehoste: Energinen Oranssi */
+    --bg: #F9FBFB;      /* Tausta: Raikas luonnonvalkoinen */
+    --text: #2D3131;    /* Teksti: Pehmeä hiilenmusta */
+    --sec-bg: #E2E8E8;  /* Toissijainen: Viileä vaaleanharmaa */
+    --white: #ffffff;   /* Korttien tausta */
+    --danger: #d64541;  /* Poisto: Hieman pehmennetty punainen */
 }
 
 body { 
     font-family: -apple-system, sans-serif; 
     background: var(--bg); 
-    color: #333; 
+    color: var(--text); 
     padding: 20px; 
     line-height: 1.4; 
 }
@@ -18,18 +23,18 @@ body {
     background: var(--white); 
     padding: 20px; 
     border-radius: 12px; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    box-shadow: 0 4px 15px rgba(74, 158, 156, 0.1); /* Kevyt turkoosi varjo */
     margin-bottom: 20px; 
 }
 
 h1, h2 { color: var(--p); margin-top: 0; }
 
-hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+hr { border: 0; border-top: 1px solid var(--sec-bg); margin: 15px 0; }
 
-.empty-msg { font-size: 0.8em; color: #666; }
+.empty-msg { font-size: 0.8em; color: #889999; }
 
 .dashboard-item { margin-bottom: 10px; font-size: 0.9em; }
-.dashboard-label { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.dashboard-label { display: flex; justify-content: space-between; margin-bottom: 3px; font-weight: 500; }
 
 .room-section { 
     border: 2px solid var(--p); 
@@ -40,16 +45,17 @@ hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
 }
 
 .room-summary { 
-    background: #eef2ed; 
+    background: #f0f7f7; /* Hyvin vaalea turkoosi tausta */
     padding: 10px; 
     border-radius: 8px; 
     margin-bottom: 15px; 
-    border: 1px dashed var(--p); 
+    border: 1px dashed var(--p);
+    color: var(--text);
 }
 
 .category-item { 
-    background: #f9f9f9; 
-    border: 1px solid #ddd; 
+    background: var(--bg); 
+    border: 1px solid var(--sec-bg); 
     padding: 15px; 
     border-radius: 8px; 
     margin-top: 10px; 
@@ -57,12 +63,12 @@ hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
 }
 
 .category-item.locked { 
-    border-color: #27ae60; 
-    background: #f0fff4; 
+    border-color: var(--p); 
+    background: #eef9f9; /* Lukitun korostusväri */
 }
 
 .bar-bg { 
-    background: #eee; 
+    background: var(--sec-bg); 
     height: 12px; 
     border-radius: 6px; 
     margin: 8px 0; 
@@ -70,7 +76,7 @@ hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
 }
 
 .bar-fill { 
-    background: #27ae60; 
+    background: var(--p); 
     height: 100%; 
     width: 0%; 
     transition: width 0.3s; 
@@ -88,25 +94,49 @@ hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
 input { 
     flex: 1; 
     padding: 10px; 
-    border: 1px solid #ccc; 
+    border: 1px solid var(--sec-bg); 
     border-radius: 6px; 
+    background: var(--white);
+    color: var(--text);
 }
 
+/* YLEISET BUTTON-TYYLIT */
 button { 
     padding: 10px 15px; 
     border: none; 
     border-radius: 6px; 
-    background: var(--p); 
+    background: var(--p); /* Oletus on pääväri (turkoosi) */
     color: white; 
     cursor: pointer; 
     font-weight: bold; 
+    transition: background 0.2s;
 }
 
-.btn-add { background: #27ae60; margin-top: 10px; width: 100%; }
-.btn-edit { background: #d35400; font-size: 0.7em; padding: 3px 6px; }
-.btn-del { background: #c0392b; font-size: 0.8em; }
-.btn-sec { background: #7f8c8d; }
+button:hover { opacity: 0.9; }
 
+/* SPESIFIT NAPIT */
+.btn-add { 
+    background: var(--accent); /* Oranssi korostus lisäyksille */
+    margin-top: 10px; 
+    width: 100%; 
+}
+
+.btn-edit { 
+    background: var(--text); /* Hillitty tumma editointiin */
+    font-size: 0.7em; 
+    padding: 3px 6px; 
+}
+
+.btn-del { 
+    background: var(--danger); /* Pehmennetty punainen */
+    font-size: 0.8em; 
+}
+
+.btn-sec { 
+    background: #6c7a89; /* Neutraali siniharmaa vähentämiseen */
+}
+
+/* MOBIILIOPTIMOIDUT NAPIT */
 .btn-small { 
     padding: 12px 16px; 
     font-size: 1.1em; 
@@ -114,17 +144,28 @@ button {
     margin: 4px 2px;
 }
 
-.btn-lock { background: #27ae60; font-size: 0.8em; margin-left: 5px; }
-.btn-unlock { background: #e67e22; font-size: 0.8em; margin-left: 5px; }
+/* LUKITUSNAPIT */
+.btn-lock { 
+    background: var(--p); 
+    font-size: 0.8em; 
+    margin-left: 5px; 
+}
 
+.btn-unlock { 
+    background: var(--accent); /* Oranssi huomioväri lukituksen avaukseen */
+    font-size: 0.8em; 
+    margin-left: 5px; 
+}
+
+/* YLÄPALKIN NAPIT */
 .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-.btn-export { background: #2980b9; }
-.btn-import { background: #8e44ad; }
-.btn-text { background: #2c3e50; grid-column: span 2; }
+.btn-export { background: #5D6D7E; }
+.btn-import { background: #5D6D7E; }
+.btn-text { background: var(--text); grid-column: span 2; }
 #fileInput { display: none; }
 
 .category-form { 
-    background: #eef2ed; 
+    background: #f0f7f7; 
     padding: 10px; 
     border-radius: 8px; 
     margin-top: 10px; 
@@ -149,7 +190,156 @@ button {
 }
 
 .locked-badge { 
-    color: #27ae60; 
+    color: var(--accent); /* Valmis-teksti oranssilla */
     font-weight: bold; 
     font-size: 0.9em; 
 }
+
+/* UUDET TYYLIT */
+
+/* Näytä kaikki / Pienennä -nappi */
+.btn-toggle {
+    background: transparent;
+    border: 1px solid var(--p);
+    color: var(--p);
+    padding: 6px 12px;
+    font-size: 0.9em;
+    margin-right: 5px;
+}
+
+.btn-toggle:hover {
+    background: var(--p);
+    color: white;
+}
+
+/* Kategorioiden määrä badge */
+.cat-count-badge {
+    background: var(--white);
+    border: 1px solid var(--sec-bg);
+    color: #666;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    white-space: nowrap;
+}
+
+/* Animaatio sisällön aukeamiselle (valinnainen, mutta kiva) */
+.room-details {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* UUSI: X-nappi huoneen poistoon */
+.btn-x {
+    background: transparent;
+    color: #e74c3c; /* Kirkas punainen */
+    border: 1px solid #e74c3c;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4em;
+    line-height: 1;
+    border-radius: 50%; /* Ympyrän muotoinen */
+    transition: all 0.2s;
+}
+
+.btn-x:hover {
+    background: #e74c3c;
+    color: white;
+}
+
+/* UUSI: Leveä toggle-nappi kortin pohjalle */
+.btn-toggle-wide {
+    width: 100%;
+    background: white;
+    border: 1px solid var(--p);
+    color: var(--p);
+    padding: 8px;
+    font-size: 0.9em;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    transition: background 0.2s;
+}
+
+.btn-toggle-wide:hover {
+    background: var(--p);
+    color: white;
+}
+
+/* Kategoria-badgen hienosäätö */
+.cat-count-badge {
+    background: var(--white);
+    border: 1px solid var(--sec-bg);
+    color: #666;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    white-space: nowrap;
+}
+
+.room-details {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ... aiemmat tyylit ... */
+
+/* SUOSIKKI (PINNAUS) NAPPI */
+.btn-star {
+    background: transparent;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #ccc; /* Passiivinen harmaa */
+    padding: 0 5px;
+    line-height: 1;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.btn-star.active {
+    color: #f1c40f; /* Kulta */
+    transform: scale(1.1);
+}
+
+.btn-star:hover {
+    transform: scale(1.2);
+}
+
+/* LAJITTELUVALIKKO */
+.sort-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.sort-select {
+    padding: 8px 12px;
+    border: 1px solid var(--p);
+    border-radius: 6px;
+    background: var(--white);
+    color: var(--text);
+    font-size: 0.95em;
+    cursor: pointer;
+    outline: none;
+}
+
+.sort-select:focus {
+    box-shadow: 0 0 0 2px rgba(74, 158, 156, 0.2);
+}
+
+/* ... loput tyylit (suosikkinappi jne) ... */

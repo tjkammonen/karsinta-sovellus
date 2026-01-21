@@ -1,3 +1,22 @@
+const expandedState = new Set();
+// Oletusjärjestys: Vanhin ensin (kuten aiemmin)
+let currentSort = 'created-asc'; 
+
+function handleToggleExpand(roomId) {
+    if (expandedState.has(roomId)) {
+        expandedState.delete(roomId);
+    } else {
+        expandedState.add(roomId);
+    }
+    draw();
+}
+
+// Käsittelee lajitteluvalikon muutoksen
+function handleSortChange(value) {
+    currentSort = value;
+    draw();
+}
+
 function draw() {
     const container = document.getElementById('roomContainer');
     const dashboard = document.getElementById('room-dashboard');
@@ -6,60 +25,152 @@ function draw() {
     container.innerHTML = '';
     dashboard.innerHTML = '<h3>Huoneiden tilanne</h3>';
     
-    let tGoal = 0, tRem = 0;
+    // 1. Data ja Tilastot
+    let globalGoal = 0;
+    let globalRem = 0;
 
-    const sortedRooms = [...state].map(room => {
-        let rGoal = 0, rRem = 0;
+    const processedRooms = state.map(room => {
+        // Varmistetaan kentät
+        if (room.pinned === undefined) room.pinned = false;
+        if (room.lastEdited === undefined) room.lastEdited = room.id; // Fallback luomisaikaan
+
+        let rGoal = 0, rRem = 0, rStart = 0;
         room.categories.forEach(cat => {
             const g = Math.ceil(cat.start / 3);
-            rGoal += g; rRem += cat.removed;
-        });
-        return { ...room, sortPerc: rGoal > 0 ? (rRem / rGoal) : -1 };
-    }).sort((a, b) => b.sortPerc - a.sortPerc);
-
-    sortedRooms.forEach(room => {
-        let rStart = 0, rGoal = 0, rRem = 0;
-        room.categories.forEach(c => {
-            const g = Math.ceil(c.start/3);
-            rStart += c.start; rGoal += g; rRem += c.removed;
-            tGoal += g; tRem += Math.min(g, c.removed);
+            rStart += cat.start;
+            rGoal += g;
+            rRem += cat.removed;
         });
 
-        const rPerc = rGoal > 0 ? (rRem/rGoal)*100 : 0;
-        const diff = rRem - rGoal;
+        globalGoal += rGoal;
+        globalRem += rRem;
+        
+        const rPerc = rGoal > 0 ? (rRem / rGoal) * 100 : 0;
+        
+        return {
+            ...room,
+            rStart, rGoal, rRem, rPerc,
+            hasLockedCats: room.categories.some(c => c.locked)
+        };
+    });
 
-        dashboard.innerHTML += `
-            <div class="dashboard-item">
-                <div class="dashboard-label"><span>${room.name}</span><span>${rRem}/${rGoal}</span></div>
-                <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, rPerc)}%"></div></div>
-            </div>`;
+    // 2. Dashboard (Tulostaulu)
+    const dashboardList = [...processedRooms].sort((a, b) => b.rPerc - a.rPerc);
+    
+    if (dashboardList.length === 0) {
+        dashboard.innerHTML += '<p class="empty-msg">Ei vielä huoneita.</p>';
+    } else {
+        dashboardList.forEach(room => {
+            dashboard.innerHTML += `
+                <div class="dashboard-item">
+                    <div class="dashboard-label">
+                        <span>${room.name} ${room.pinned ? '⭐' : ''} ${room.rPerc >= 100 ? '🏆' : ''}</span>
+                        <span>${room.rRem}/${room.rGoal}</span>
+                    </div>
+                    <div class="bar-bg">
+                        <div class="bar-fill bar-room" style="width:${Math.min(100, room.rPerc)}%"></div>
+                    </div>
+                </div>`;
+        });
+    }
 
+    // 3. Lajitteluvalikko (Lisätään vain jos huoneita on olemassa)
+    if (processedRooms.length > 0) {
+        const sortDiv = document.createElement('div');
+        sortDiv.className = 'sort-container';
+        sortDiv.innerHTML = `
+            <label>Järjestä:</label>
+            <select onchange="handleSortChange(this.value)" class="sort-select">
+                <option value="created-asc" ${currentSort === 'created-asc' ? 'selected' : ''}>Vanhin ensin</option>
+                <option value="last-edited" ${currentSort === 'last-edited' ? 'selected' : ''}>Viimeksi muokattu</option>
+                <option value="progress-desc" ${currentSort === 'progress-desc' ? 'selected' : ''}>Valmius %</option>
+                <option value="alpha-asc" ${currentSort === 'alpha-asc' ? 'selected' : ''}>Aakkoset A-Ö</option>
+            </select>
+        `;
+        container.appendChild(sortDiv);
+    }
+
+    // 4. Huonekortit - JÄRJESTYSLOGIIKKA
+    const roomList = [...processedRooms].sort((a, b) => {
+        // Ensisijainen sääntö: Pinned aina kärkeen
+        if (a.pinned && !b.pinned) return -1; 
+        if (!a.pinned && b.pinned) return 1;  
+        
+        // Toissijainen sääntö: Valittu järjestys
+        switch (currentSort) {
+            case 'last-edited':
+                return b.lastEdited - a.lastEdited; // Uusin aika ensin
+            case 'progress-desc':
+                return b.rPerc - a.rPerc; // Isoin % ensin
+            case 'alpha-asc':
+                return a.name.localeCompare(b.name); // A-Ö
+            case 'created-asc':
+            default:
+                return a.id - b.id; // Vanhin ID ensin
+        }
+    });
+
+    roomList.forEach(room => {
+        const diff = room.rRem - room.rGoal;
+        const isExpanded = expandedState.has(room.id);
+        const catCount = room.categories.length;
+        
         const rDiv = document.createElement('div');
         rDiv.className = 'room-section';
+        rDiv.id = `room-card-${room.id}`; 
+        if (room.pinned) rDiv.style.borderColor = 'var(--accent)'; 
+        
         rDiv.innerHTML = `
-            <div class="flex"><h2>${room.name}</h2><button class="btn-del btn-small" onclick="handleDeleteRoom(${room.id})">Poista</button></div>
-            <div class="room-summary">
-                <div>Tavaroita: ${rStart} | Poistettu: ${rRem}/${rGoal}</div>
-                <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, rPerc)}%"></div></div>
-                <div style="font-size:0.8em; font-weight:bold;">${diff >= 0 ? 'Tavoite ylitetty 💪' : 'Vielä matkaa 🧐'}</div>
+            <div class="flex">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button class="btn-star ${room.pinned ? 'active' : ''}" onclick="handleTogglePin(${room.id})" title="Kiinnitä ylös">★</button>
+                    <h2>${room.name} ${room.rPerc >= 100 ? '🏆' : ''}</h2>
+                </div>
+                ${!room.hasLockedCats ? `<button class="btn-del btn-x" onclick="handleDeleteRoom(${room.id})" title="Poista huone">×</button>` : ''}
             </div>
-            <div id="cat-list-${room.id}"></div>
-            <div class="category-form">
-                <div class="flex"><input type="text" id="catName-${room.id}" placeholder="Kategoria"><input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width:70px;"></div>
-                <button class="btn-add" onclick="handleAddCategory(${room.id})">Lisää kategoria</button>
+            
+            <div class="room-summary">
+                <div>Tavaroita: ${room.rStart} | Poistettu: ${room.rRem}/${room.rGoal}</div>
+                <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, room.rPerc)}%"></div></div>
+                
+                <div class="flex" style="margin-top: 5px; align-items: flex-start;">
+                    <div style="font-size:0.8em; font-weight:bold;">
+                        ${diff >= 0 ? 
+                            `Tavoite ylitetty ${diff} kpl 💪` : 
+                            `Matkaa tavoitteeseen ${Math.abs(diff)} kpl 🧐`}
+                    </div>
+                    <div class="cat-count-badge">${catCount} kategoriaa</div>
+                </div>
+            </div>
+
+            <button class="btn-toggle-wide" onclick="handleToggleExpand(${room.id})">
+                ${isExpanded ? 'Pienennä ▲' : 'Näytä kategoriat ▼'}
+            </button>
+
+            <div class="room-details" style="display: ${isExpanded ? 'block' : 'none'}">
+                <div id="cat-list-${room.id}"></div>
+                <div class="category-form">
+                    <div class="flex">
+                        <input type="text" id="catName-${room.id}" placeholder="Kategoria">
+                        <input type="number" id="catCount-${room.id}" placeholder="Kpl" style="max-width:70px;">
+                    </div>
+                    <button class="btn-add" onclick="handleAddCategory(${room.id})">Lisää kategoria</button>
+                </div>
             </div>`;
 
         const catList = rDiv.querySelector(`#cat-list-${room.id}`);
+        
         room.categories.forEach(cat => {
             const goal = Math.ceil(cat.start/3);
             const perc = goal > 0 ? (cat.removed/goal)*100 : 0;
             const isL = cat.locked;
+            
             const cDiv = document.createElement('div');
             cDiv.className = `category-item ${isL ? 'locked' : ''}`;
             
             cDiv.innerHTML = `
                 <div class="flex"><strong>${cat.name} ${isL ? '🔒' : ''}</strong>
-                    <div><button class="${isL?'btn-unlock':'btn-lock'}" onclick="handleToggleLock(${room.id},${cat.id})">${isL?'Avaa lukitus':'Lukitse'}</button>
+                    <div><button class="${isL?'btn-unlock':'btn-lock'}" onclick="handleToggleLock(${room.id},${cat.id})">${isL?'Avaa':'Lukitse'}</button>
                     ${!isL?`<button class="btn-del btn-small" onclick="handleDeleteCat(${room.id},${cat.id})">×</button>`:''}</div>
                 </div>
                 
@@ -94,15 +205,26 @@ function draw() {
             `;
             catList.appendChild(cDiv);
         });
+        
         container.appendChild(rDiv);
     });
 
-    const totalPerc = tGoal > 0 ? Math.round((tRem / tGoal) * 100) : 0;
-    const mainBar = document.getElementById('main-bar');
-    if (mainBar) mainBar.style.width = totalPerc + '%';
+    // 4. Kokonaistilanne
+    let totalGoal = 0;
+    let totalRem = 0;
+    
+    state.forEach(r => {
+        r.categories.forEach(c => {
+           totalGoal += Math.ceil(c.start/3);
+           totalRem += c.removed; 
+        });
+    });
+
+    const totalPerc = totalGoal > 0 ? Math.round((totalRem / totalGoal) * 100) : 0;
+    
+    if (mainBar) mainBar.style.width = Math.min(100, totalPerc) + '%';
     const overallText = document.querySelector('#overall strong');
     if (overallText) overallText.innerText = `Koko kodin edistyminen: ${totalPerc}%`;
 }
 
-// Ensimmäinen piirto kun sivu latautuu
 draw();
