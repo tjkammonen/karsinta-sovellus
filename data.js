@@ -37,12 +37,11 @@ function handleCreateRoom() {
 
 function handleAddCategory(roomId) {
     const nameInput = document.getElementById('modal-cat-name');
-    const countDisplay = document.getElementById('modal-cat-start'); // Tämä on nyt DIV, ei INPUT
+    const countDisplay = document.getElementById('modal-cat-start'); // DIV
     
     if (!nameInput || !countDisplay) return;
 
     const name = nameInput.value;
-    // HUOM: Luetaan nyt innerText, koska elementti on div
     const count = parseInt(countDisplay.innerText);
 
     if (name && !isNaN(count)) {
@@ -127,22 +126,39 @@ function handleResetApp() {
 
 function handleShareReport() {
     let totalGoal = 0, totalRem = 0;
-    let roomText = "";
 
+    // 1. Lasketaan ensin kokonaissummat
     state.forEach(room => {
+        room.categories.forEach(c => {
+            totalGoal += Math.ceil(c.start/3); 
+            totalRem += c.removed;
+        });
+    });
+    
+    const totalPerc = totalGoal > 0 ? Math.round((totalRem/totalGoal)*100) : 0;
+
+    // 2. Luodaan väliaikainen lista huoneista lajittelua varten
+    const roomStats = state.map(room => {
         let rGoal = 0, rRem = 0;
         room.categories.forEach(c => {
-            rGoal += Math.ceil(c.start/3); rRem += c.removed;
+            rGoal += Math.ceil(c.start/3); 
+            rRem += c.removed;
         });
-        totalGoal += rGoal; totalRem += rRem;
         const rPerc = rGoal > 0 ? Math.round((rRem/rGoal)*100) : 0;
-        // Lisätty &thinsp;
-        roomText += `${rPerc >= 100 ? '✅' : '📦'} ${room.name}: ${rPerc}&thinsp;% (${rRem}/${rGoal})\n`;
+        return { name: room.name, perc: rPerc, rem: rRem, goal: rGoal, isDone: rPerc >= 100 };
     });
 
-    const totalPerc = totalGoal > 0 ? Math.round((totalRem/totalGoal)*100) : 0;
-    
-    const text = `Karsi 33% 🏠\nYhteensä: ${totalPerc}% (${totalRem}/${totalGoal})\n\n${roomText}`;
+    // 3. Järjestetään huoneet: Suurin prosentti ensin
+    roomStats.sort((a, b) => b.perc - a.perc);
+
+    // 4. Muodostetaan tekstilista (HUOM: Ei &thinsp; koodia, vaan tavallinen välilyönti)
+    let roomText = "";
+    roomStats.forEach(room => {
+        roomText += `${room.isDone ? '✅' : '📦'} ${room.name}: ${room.perc} % (${room.rem}/${room.goal})\n`;
+    });
+
+    // Otsikko ja yhteenveto
+    const text = `Karsi 33% 🏠\nYhteensä: ${totalPerc} % (${totalRem}/${totalGoal})\n\n${roomText}`;
 
     if (navigator.share) {
         navigator.share({ title: "Karsi 33%", text: text }).catch(err => console.log(err));
