@@ -2,10 +2,11 @@ const expandedState = new Set();
 let currentSort = 'created-asc'; 
 
 // Modaalien tilat
-let activeModal = null;      // { roomId, catId } -> Editointi
-let activeAddRoomId = null;  // roomId -> Kategorian lisäys
-let isAddRoomModalOpen = false; // -> Huoneen lisäys
-let isSettingsModalOpen = false; // -> Asetukset
+let activeModal = null;          // Editointi
+let activeAddRoomId = null;      // Kat. lisäys
+let isAddRoomModalOpen = false;  // Huoneen lisäys
+let isSettingsModalOpen = false; // Asetukset
+let isStatsModalOpen = false;    // Tilastot (UUSI)
 
 function handleToggleExpand(roomId) {
     if (expandedState.has(roomId)) {
@@ -21,7 +22,6 @@ function handleSortChange(value) {
     draw();
 }
 
-// --- APUFUNKTIO: LISÄYS-MODAALIN NAPIT ---
 function adjustAddModalInput(delta) {
     const input = document.getElementById('modal-cat-start');
     if (!input) return;
@@ -38,17 +38,18 @@ function resetModals() {
     activeAddRoomId = null;
     isAddRoomModalOpen = false;
     isSettingsModalOpen = false;
+    isStatsModalOpen = false;
     document.getElementById('edit-modal').classList.add('hidden');
     document.body.style.overflow = 'auto';
 }
 
 function openModalBase() {
-    resetModals(); // Varmistetaan että muut on kiinni
+    resetModals();
     document.getElementById('edit-modal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
-// 1. Kategorian Muokkaus (Edit)
+// 1. Kategorian Muokkaus
 function openCategoryModal(roomId, catId) {
     openModalBase();
     activeModal = { roomId, catId };
@@ -56,7 +57,7 @@ function openCategoryModal(roomId, catId) {
 }
 function closeCategoryModal() { resetModals(); draw(); }
 
-// 2. Kategorian Lisäys (Add Cat)
+// 2. Kategorian Lisäys
 function openAddCategoryModal(roomId) {
     openModalBase();
     activeAddRoomId = roomId;
@@ -64,7 +65,7 @@ function openAddCategoryModal(roomId) {
 }
 function closeAddCategoryModal() { resetModals(); draw(); }
 
-// 3. Huoneen Luonti (Add Room)
+// 3. Huoneen Luonti
 function openAddRoomModal() {
     openModalBase();
     isAddRoomModalOpen = true;
@@ -72,7 +73,7 @@ function openAddRoomModal() {
 }
 function closeAddRoomModal() { resetModals(); draw(); }
 
-// 4. Asetukset (Settings)
+// 4. Asetukset
 function openSettingsModal() {
     openModalBase();
     isSettingsModalOpen = true;
@@ -80,8 +81,65 @@ function openSettingsModal() {
 }
 function closeSettingsModal() { resetModals(); draw(); }
 
+// 5. Tilastot (UUSI)
+function openStatsModal() {
+    openModalBase();
+    isStatsModalOpen = true;
+    renderStatsModal();
+}
+function closeStatsModal() { resetModals(); draw(); }
+
 
 // --- MODAALIEN RENDERÖINTI ---
+
+// TILASTOT (UUSI MODAALI)
+function renderStatsModal() {
+    const container = document.getElementById('modal-body');
+    
+    // Lasketaan huoneiden tilanteet
+    const sortedRooms = [...state].map(room => {
+        let rGoal = 0, rRem = 0;
+        room.categories.forEach(c => {
+            rGoal += Math.ceil(c.start / 3);
+            rRem += c.removed;
+        });
+        const rPerc = rGoal > 0 ? (rRem / rGoal) * 100 : 0;
+        return { ...room, rRem, rGoal, rPerc };
+    }).sort((a, b) => b.rPerc - a.rPerc);
+
+    let listHTML = '';
+    if (sortedRooms.length > 0) {
+        listHTML = '<div class="stats-list-container">';
+        sortedRooms.forEach(room => {
+            const isDone = room.rPerc >= 100;
+            listHTML += `
+                <div class="stats-row">
+                    <span>${isDone ? '✅' : '📦'} <strong>${room.name}</strong></span>
+                    <span style="color:${isDone ? 'var(--p)' : '#666'}">
+                        ${Math.round(room.rPerc)}% <small>(${room.rRem}/${room.rGoal})</small>
+                    </span>
+                </div>`;
+        });
+        listHTML += '</div>';
+    } else {
+        listHTML = '<p style="text-align:center; color:#999;">Ei huoneita vielä.</p>';
+    }
+
+    container.innerHTML = `
+        <div class="modal-header">
+            <h2 style="margin:0; font-size:1.4em;">Huoneiden erittely</h2>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
+            ${listHTML}
+            <p style="text-align:center; font-size:0.85em; color:#888; margin-top:15px;">
+                Huoneet on järjestetty valmiusasteen mukaan.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-close-modal" onclick="closeStatsModal()">Sulje</button>
+        </div>
+    `;
+}
 
 // ASETUKSET
 function renderSettingsModal() {
@@ -90,26 +148,19 @@ function renderSettingsModal() {
         <div class="modal-header">
             <h2 style="margin:0; font-size:1.4em;">Asetukset</h2>
         </div>
-
         <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
-            
             <div class="settings-section">
                 <span class="settings-label">Jaa edistyminen</span>
-                <button class="btn-share" onclick="handleShareReport()">
-                    📤 Jaa raportti (WhatsApp / Viesti)
-                </button>
-                <p style="font-size:0.8em; color:#666; margin-top:5px;">Luo yhteenvedon tilanteesta tekstimuodossa, jonka voit lähettää kaverille.</p>
+                <button class="btn-share" onclick="handleShareReport()">📤 Jaa raportti (WhatsApp)</button>
+                <p style="font-size:0.8em; color:#666; margin-top:5px;">Luo yhteenvedon tekstimuodossa.</p>
             </div>
-
             <div class="settings-section">
                 <span class="settings-label">Varmuuskopiointi (JSON)</span>
-                <p style="font-size:0.8em; color:#666; margin-bottom:10px;">Kopioi kaikki tiedot talteen tai siirrä ne uuteen laitteeseen.</p>
                 <div class="settings-grid">
                     <button class="btn-sec" onclick="handleCopyToClipboard()">📋 Kopioi tiedot</button>
                     <button class="btn-sec" onclick="handleTextTransfer()">📥 Tuo tiedot</button>
                 </div>
             </div>
-
             <div class="settings-section">
                 <span class="settings-label">Excel / Arkistointi</span>
                 <div class="settings-grid">
@@ -117,18 +168,12 @@ function renderSettingsModal() {
                     <button class="btn-import" onclick="document.getElementById('fileInput').click()">Tuo CSV</button>
                 </div>
             </div>
-
             <div class="danger-zone">
                 <strong style="color:var(--danger)">Vaaravyöhyke</strong>
-                <p style="font-size:0.8em; margin:5px 0;">Haluatko aloittaa alusta? Tämä poistaa kaikki tiedot.</p>
                 <button class="btn-reset" onclick="handleResetApp()">Tyhjennä kaikki tiedot</button>
             </div>
-
         </div>
-
-        <div class="modal-footer">
-            <button class="btn-close-modal" onclick="closeSettingsModal()">Sulje</button>
-        </div>
+        <div class="modal-footer"><button class="btn-close-modal" onclick="closeSettingsModal()">Sulje</button></div>
     `;
 }
 
@@ -160,41 +205,31 @@ function renderAddModal() {
     if (!activeAddRoomId) return;
     const room = state.find(r => r.id === activeAddRoomId);
     if (!room) return closeAddCategoryModal();
-
     const container = document.getElementById('modal-body');
-
     container.innerHTML = `
         <div class="modal-header">
             <h2 style="margin:0; font-size:1.4em;">Lisää kategoria</h2>
             <div style="color:#666; font-size:0.9em;">Huone: ${room.name}</div>
         </div>
-
         <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
             <div class="modal-input-group">
                 <label class="modal-label">Kategorian nimi</label>
                 <input type="text" id="modal-cat-name" class="modal-input" placeholder="Esim. Talvitakit" autocomplete="off">
             </div>
-
             <div class="modal-input-group" style="margin-bottom:10px;">
                 <label class="modal-label">Tavaroiden määrä (arvio)</label>
                 <input type="number" id="modal-cat-start" class="modal-input" placeholder="0">
             </div>
-
             <div class="control-grid" style="margin-bottom:20px;">
                 <button class="btn-large minus" onclick="adjustAddModalInput(-5)">-&thinsp;5</button>
                 <button class="btn-large plus" onclick="adjustAddModalInput(1)">+&thinsp;1</button>
                 <button class="btn-large plus" onclick="adjustAddModalInput(5)">+&thinsp;5</button>
-                
                 <button class="btn-large minus" onclick="adjustAddModalInput(-10)">-&thinsp;10</button>
                 <button class="btn-large minus" onclick="adjustAddModalInput(-1)">-&thinsp;1</button>
                 <button class="btn-large plus" onclick="adjustAddModalInput(10)">+&thinsp;10</button>
             </div>
-            
-            <p style="color:#666; font-size:0.9em; line-height:1.4; text-align:center;">
-                Tavoitteesi on poistaa 1/3 tästä määrästä.
-            </p>
+            <p style="color:#666; font-size:0.9em; line-height:1.4; text-align:center;">Tavoitteesi on poistaa 1/3 tästä määrästä.</p>
         </div>
-
         <div class="modal-btn-group">
             <button class="btn-cancel" onclick="closeAddCategoryModal()">Peruuta</button>
             <button class="btn-save" onclick="handleAddCategory(${room.id})">Tallenna</button>
@@ -203,7 +238,7 @@ function renderAddModal() {
     setTimeout(() => { const i = document.getElementById('modal-cat-name'); if(i) i.focus(); }, 100);
 }
 
-// KATEGORIAN MUOKKAUS (EDIT)
+// KATEGORIAN MUOKKAUS
 function renderModal() {
     if (!activeModal) return;
     const { roomId, catId } = activeModal;
@@ -259,11 +294,11 @@ function renderModal() {
 // --- PÄÄPIIRTO (DRAW) ---
 
 function draw() {
-    // Renderöidään oikea modaali
     if (activeModal) renderModal();
     else if (activeAddRoomId) renderAddModal();
     else if (isAddRoomModalOpen) renderAddRoomModal();
     else if (isSettingsModalOpen) renderSettingsModal();
+    else if (isStatsModalOpen) renderStatsModal(); // Piirretään tilastomodaali
 
     const container = document.getElementById('roomContainer');
     const dashboard = document.getElementById('room-dashboard');
@@ -290,7 +325,7 @@ function draw() {
     const globalPerc = totalGoal > 0 ? Math.round((totalRem / totalGoal) * 100) : 0;
     const globalDiff = totalRem - totalGoal;
 
-    // 2. Dashboard
+    // 2. Dashboard - Yhteenveto (UUSI NAPPI LISÄTTY)
     if (state.length > 0) {
         dashboard.innerHTML += `
             <div class="overall-summary">
@@ -307,24 +342,13 @@ function draw() {
                 <div style="text-align:center; margin-top:10px; font-size:0.9em; font-weight:bold; color: ${globalDiff >= 0 ? 'var(--p)' : '#666'};">
                     ${globalDiff >= 0 ? `🎉 Olet poistanut ${globalDiff} tavaraa yli tavoitteen!` : `Matkaa tavoitteeseen vielä ${Math.abs(globalDiff)} tavaraa.`}
                 </div>
+                
+                <button class="btn-stats" onclick="openStatsModal()">📊 Näytä huoneiden erittely</button>
             </div>
-            <h3 style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">Huoneiden parhaimmisto</h3>
         `;
     } else {
         dashboard.innerHTML = '<p class="empty-msg">Aloita lisäämällä ensimmäinen huone.</p>';
     }
-
-    const dashboardList = [...processedRooms].sort((a, b) => b.rPerc - a.rPerc);
-    dashboardList.forEach(room => {
-        dashboard.innerHTML += `
-            <div class="dashboard-item">
-                <div class="dashboard-label">
-                    <span>${room.name} ${room.pinned ? '⭐' : ''} ${room.rPerc >= 100 ? '🏆' : ''}</span>
-                    <span>${room.rRem}/${room.rGoal}</span>
-                </div>
-                <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, room.rPerc)}%"></div></div>
-            </div>`;
-    });
 
     // 3. Lajittelu
     if (processedRooms.length > 0) {
@@ -386,11 +410,7 @@ function draw() {
 
             <div class="room-details" style="display: ${isExpanded ? 'block' : 'none'}">
                 <div id="cat-list-${room.id}"></div>
-                
-                <button class="btn-add-trigger" onclick="openAddCategoryModal(${room.id})">
-                    + Lisää uusi kategoria
-                </button>
-
+                <button class="btn-add-trigger" onclick="openAddCategoryModal(${room.id})">+ Lisää uusi kategoria</button>
                 <div style="margin-top: 20px;">
                     ${room.hasLockedCats ? `<div class="delete-info-text">Huoneessa on valmiiksi merkittyjä kohteita.</div>` : ''}
                     <button class="btn-delete-room" onclick="handleDeleteRoom(${room.id})" ${room.hasLockedCats ? 'disabled' : ''}>Poista huone</button>
