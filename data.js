@@ -1,12 +1,9 @@
 // --- DATA.JS: Sovelluksen tila ja logiikka ---
 
-// 1. Tilan alustus
 let state = JSON.parse(localStorage.getItem('karsinta_final_v1')) || [];
 
-// 2. Tallennus ja synkronointi
 function sync() {
     localStorage.setItem('karsinta_final_v1', JSON.stringify(state));
-    // Kutsuu piirtofunktiota, jos se on ladattu (render-main.js)
     if (typeof draw === 'function') draw();
 }
 
@@ -15,17 +12,19 @@ function updateMeta(roomId) {
     if (room) room.lastEdited = Date.now();
 }
 
-// 3. Toimintojen käsittelijät (Handlers)
+// --- Toiminnot ---
 
 function handleCreateRoom() {
     const nameInput = document.getElementById('modal-room-name');
-    if (!nameInput) return;
+    if (!nameInput) return null;
     const name = nameInput.value;
     
-    if (!name) { alert("Anna huoneelle nimi!"); return; }
+    if (!name) { alert("Nimi puuttuu!"); return null; }
+    
+    const newId = Date.now();
     
     state.push({
-        id: Date.now(),
+        id: newId,
         name: name,
         pinned: false,
         lastEdited: Date.now(),
@@ -33,16 +32,18 @@ function handleCreateRoom() {
     });
     
     sync();
-    if (typeof closeAddRoomModal === 'function') closeAddRoomModal();
+    return newId;
 }
 
 function handleAddCategory(roomId) {
     const nameInput = document.getElementById('modal-cat-name');
-    const countInput = document.getElementById('modal-cat-start');
-    if (!nameInput || !countInput) return;
+    const countDisplay = document.getElementById('modal-cat-start'); // Tämä on nyt DIV, ei INPUT
+    
+    if (!nameInput || !countDisplay) return;
 
     const name = nameInput.value;
-    const count = parseInt(countInput.value);
+    // HUOM: Luetaan nyt innerText, koska elementti on div
+    const count = parseInt(countDisplay.innerText);
 
     if (name && !isNaN(count)) {
         const room = state.find(r => r.id === roomId);
@@ -55,7 +56,7 @@ function handleAddCategory(roomId) {
             if (typeof closeAddCategoryModal === 'function') closeAddCategoryModal();
         }
     } else {
-        alert("Täytä molemmat kentät!");
+        alert("Tiedot puuttuvat!");
     }
 }
 
@@ -98,32 +99,31 @@ function handleTogglePin(roomId) {
 }
 
 function handleDeleteRoom(roomId) {
-    if (confirm("Haluatko varmasti poistaa koko huoneen ja kaikki sen tiedot?")) {
+    if (confirm("Poistetaanko huone ja kaikki sen tiedot?")) {
         state = state.filter(r => r.id !== roomId);
         sync();
     }
 }
 
 function handleDeleteCat(roomId, catId) {
-    if (confirm("Haluatko varmasti poistaa tämän kategorian?")) {
+    if (confirm("Poistetaanko kategoria?")) {
         const room = state.find(r => r.id === roomId);
         room.categories = room.categories.filter(c => c.id !== catId);
         updateMeta(roomId);
         sync();
+        if (typeof closeCategoryModal === 'function') closeCategoryModal();
     }
 }
 
 function handleResetApp() {
-    if (confirm("VAROITUS: Tämä poistaa kaikki tiedot lopullisesti. Haluatko jatkaa?")) {
-        if (confirm("Oletko aivan varma?")) {
-            state = [];
-            sync();
-            if (typeof closeSettingsModal === 'function') closeSettingsModal();
-        }
+    if (confirm("Nollataanko kaikki? Tätä ei voi perua.")) {
+        state = [];
+        sync();
+        if (typeof closeSettingsModal === 'function') closeSettingsModal();
     }
 }
 
-// 4. Tuonti / Vienti / Jako
+// --- Raportointi & Vienti ---
 
 function handleShareReport() {
     let totalGoal = 0, totalRem = 0;
@@ -136,23 +136,25 @@ function handleShareReport() {
         });
         totalGoal += rGoal; totalRem += rRem;
         const rPerc = rGoal > 0 ? Math.round((rRem/rGoal)*100) : 0;
-        roomText += `${rPerc >= 100 ? '✅' : '📦'} ${room.name}: ${rPerc}% (${rRem}/${rGoal})\n`;
+        // Lisätty &thinsp;
+        roomText += `${rPerc >= 100 ? '✅' : '📦'} ${room.name}: ${rPerc}&thinsp;% (${rRem}/${rGoal})\n`;
     });
 
     const totalPerc = totalGoal > 0 ? Math.round((totalRem/totalGoal)*100) : 0;
-    const text = `Karsinta-apurin tilanne 🏠\nKoko koti: ${totalPerc}% valmis (${totalRem}/${totalGoal})\n\nHuoneet:\n${roomText}\n_Lähetetty Karsinta-apurista_`;
+    
+    const text = `Karsi 33% 🏠\nYhteensä: ${totalPerc}% (${totalRem}/${totalGoal})\n\n${roomText}`;
 
     if (navigator.share) {
-        navigator.share({ title: "Karsintatilanne", text: text }).catch(err => console.log(err));
+        navigator.share({ title: "Karsi 33%", text: text }).catch(err => console.log(err));
     } else {
-        navigator.clipboard.writeText(text).then(() => alert("Raportti kopioitu leikepöydälle!"));
+        navigator.clipboard.writeText(text).then(() => alert("Kopioitu leikepöydälle!"));
     }
 }
 
 function handleCopyToClipboard() {
     const data = JSON.stringify(state);
     navigator.clipboard.writeText(data).then(() => {
-        alert("✅ Tiedot kopioitu leikepöydälle!");
+        alert("✅ Data kopioitu!");
     }).catch(err => {
         prompt("Kopioi tästä:", data);
     });
@@ -160,9 +162,9 @@ function handleCopyToClipboard() {
 
 function handleTextTransfer() {
     const currentData = JSON.stringify(state);
-    const input = prompt("Kopioi tila tai liitä uusi:", currentData);
+    const input = prompt("Liitä data tähän:", currentData);
     if (input && input !== currentData) {
-        try { state = JSON.parse(input); sync(); } catch(e) { alert("Virhe datassa!"); }
+        try { state = JSON.parse(input); sync(); } catch(e) { alert("Virheellinen data!"); }
     }
 }
 

@@ -1,92 +1,122 @@
 // --- UI-LOGIC.JS: Käyttöliittymän tila ja ohjaus ---
 
-const expandedState = new Set();
 let currentSort = 'created-asc'; 
 
-// Modaalien tilat
-let activeModal = null;
-let activeAddRoomId = null;
-let isAddRoomModalOpen = false;
-let isSettingsModalOpen = false;
-let isStatsModalOpen = false;
+// Tila: Mikä näkymä on aktiivinen?
+let activeRoomId = null;     
+let activeCatId = null;      
+let activeAddRoom = false;   
+let activeSettings = false;  
+let activeStats = false;     
 
 // Käynnistä sovellus
 if (typeof draw === 'function') draw();
-
-function handleToggleExpand(roomId) {
-    if (expandedState.has(roomId)) expandedState.delete(roomId);
-    else expandedState.add(roomId);
-    draw();
-}
 
 function handleSortChange(value) {
     currentSort = value;
     draw();
 }
 
+// PÄIVITETTY FUNKTIO: Käsittelee nyt DIViä, ei inputtia
 function adjustAddModalInput(delta) {
-    const input = document.getElementById('modal-cat-start');
-    if (!input) return;
-    let val = parseInt(input.value);
+    const display = document.getElementById('modal-cat-start');
+    if (!display) return;
+    
+    let val = parseInt(display.innerText);
     if (isNaN(val)) val = 0;
+    
     val = Math.max(0, val + delta);
-    input.value = val;
+    display.innerText = val; // Päivitetään teksti
 }
 
-// Modaalien hallinta
+// --- NAVIGOINTI LOGIIKKA (The Stack) ---
 
-function resetModals() {
-    activeModal = null;
-    activeAddRoomId = null;
-    isAddRoomModalOpen = false;
-    isSettingsModalOpen = false;
-    isStatsModalOpen = false;
+function resetViews() {
+    activeRoomId = null;
+    activeCatId = null;
+    activeAddRoom = false;
+    activeSettings = false;
+    activeStats = false;
     document.getElementById('edit-modal').classList.add('hidden');
     document.body.style.overflow = 'auto';
 }
 
 function openModalBase() {
-    resetModals();
     document.getElementById('edit-modal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
-// 1. Edit Category
+// 1. ETUSIVU -> HUONE
+function openRoomModal(roomId) {
+    resetViews(); 
+    activeRoomId = roomId;
+    openModalBase();
+    if(typeof renderRoomModal === 'function') renderRoomModal(roomId);
+}
+
+function closeRoomModal() {
+    resetViews(); 
+    draw();
+}
+
+// 2. HUONE -> KATEGORIAN MUOKKAUS
 function openCategoryModal(roomId, catId) {
-    openModalBase();
-    activeModal = { roomId, catId };
-    if(typeof renderModal === 'function') renderModal(activeModal);
+    activeRoomId = roomId; 
+    activeCatId = catId;
+    if(typeof renderCategoryEditModal === 'function') renderCategoryEditModal(roomId, catId);
 }
-function closeCategoryModal() { resetModals(); draw(); }
 
-// 2. Add Category
+function closeCategoryModal() {
+    activeCatId = null;
+    if (activeRoomId) {
+        openRoomModal(activeRoomId); 
+    } else {
+        closeRoomModal();
+    }
+}
+
+// 3. HUONE -> KATEGORIAN LISÄYS
 function openAddCategoryModal(roomId) {
-    openModalBase();
-    activeAddRoomId = roomId;
-    if(typeof renderAddModal === 'function') renderAddModal(activeAddRoomId);
+    activeRoomId = roomId;
+    activeCatId = 'NEW'; 
+    if(typeof renderAddCategoryModal === 'function') renderAddCategoryModal(roomId);
 }
-function closeAddCategoryModal() { resetModals(); draw(); }
 
-// 3. Add Room
+function closeAddCategoryModal() {
+    activeCatId = null;
+    openRoomModal(activeRoomId);
+}
+
+// 4. ETUSIVU -> HUONEEN LUONTI
 function openAddRoomModal() {
+    resetViews();
+    activeAddRoom = true;
     openModalBase();
-    isAddRoomModalOpen = true;
-    if(typeof renderAddRoomModal === 'function') renderAddRoomModal();
+    if(typeof renderCreateRoomModal === 'function') renderCreateRoomModal();
 }
-function closeAddRoomModal() { resetModals(); draw(); }
 
-// 4. Settings
+function triggerCreateRoom() {
+    const newId = handleCreateRoom(); 
+    if (newId) {
+        openRoomModal(newId);
+    }
+}
+function closeAddRoomModal() { resetViews(); draw(); }
+
+// 5. ETUSIVU -> ASETUKSET
 function openSettingsModal() {
+    resetViews();
+    activeSettings = true;
     openModalBase();
-    isSettingsModalOpen = true;
     if(typeof renderSettingsModal === 'function') renderSettingsModal();
 }
-function closeSettingsModal() { resetModals(); draw(); }
+function closeSettingsModal() { resetViews(); draw(); }
 
-// 5. Stats
+// 6. ETUSIVU -> TILASTOT
 function openStatsModal() {
+    resetViews();
+    activeStats = true;
     openModalBase();
-    isStatsModalOpen = true;
     if(typeof renderStatsModal === 'function') renderStatsModal();
 }
-function closeStatsModal() { resetModals(); draw(); }
+function closeStatsModal() { resetViews(); draw(); }
