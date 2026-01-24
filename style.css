@@ -465,3 +465,74 @@ button:hover { opacity: 0.9; }
     background: var(--danger);
     color: white;
 }
+
+/* ... aiemmat tyylit ... */
+
+/* OTSIKKORIVI (Header) */
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Pelkkä ikoni-nappi oikeaan yläkulmaan */
+.btn-settings-icon {
+    background: transparent;
+    border: none;
+    font-size: 1.8em; /* Iso, sormiystävällinen koko */
+    padding: 5px;
+    width: auto;
+    margin: 0;
+    color: #999;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.3s, color 0.3s;
+}
+
+.btn-settings-icon:hover {
+    color: var(--p);
+    transform: rotate(90deg); /* Pieni animaatio hoverissa */
+    background: transparent;
+}
+
+/* ... aiemmat tyylit ... */
+
+/* Tilasto-nappi (Dashboardissa) */
+.btn-stats {
+    width: 100%;
+    background: white;
+    border: 1px solid var(--p);
+    color: var(--p);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 15px;
+    font-size: 0.95em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-stats:hover {
+    background: #f0f9f9;
+}
+
+/* Tilastolistan tyylit modaalissa */
+.stats-list-container {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid #eee;
+}
+
+.stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 0.95em;
+}
+
+.stats-row:last-child {
+    border-bottom: none;
+}
