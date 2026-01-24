@@ -1,5 +1,7 @@
+/* =========================================
+   1. VÄRIT JA MUUTTUJAT
+   ========================================= */
 :root { 
-    /* UUSI VÄRIPALETTI */
     --p: #4A9E9C;       /* Pääväri: Murrettu Turkoosi */
     --accent: #FF8C42;  /* Tehoste: Energinen Oranssi */
     --bg: #F9FBFB;      /* Tausta: Raikas luonnonvalkoinen */
@@ -9,6 +11,9 @@
     --danger: #d64541;  /* Poisto: Hieman pehmennetty punainen */
 }
 
+/* =========================================
+   2. PERUSASETUKSET (BODY, LAYOUT)
+   ========================================= */
 body { 
     font-family: -apple-system, sans-serif; 
     background: var(--bg); 
@@ -23,67 +28,15 @@ body {
     background: var(--white); 
     padding: 20px; 
     border-radius: 12px; 
-    box-shadow: 0 4px 15px rgba(74, 158, 156, 0.1); /* Kevyt turkoosi varjo */
+    box-shadow: 0 4px 15px rgba(74, 158, 156, 0.1); 
     margin-bottom: 20px; 
 }
 
 h1, h2 { color: var(--p); margin-top: 0; }
-
 hr { border: 0; border-top: 1px solid var(--sec-bg); margin: 15px 0; }
-
 .empty-msg { font-size: 0.8em; color: #889999; }
 
-.dashboard-item { margin-bottom: 10px; font-size: 0.9em; }
-.dashboard-label { display: flex; justify-content: space-between; margin-bottom: 3px; font-weight: 500; }
-
-.room-section { 
-    border: 2px solid var(--p); 
-    border-radius: 12px; 
-    padding: 15px; 
-    margin-bottom: 20px; 
-    background: var(--white); 
-}
-
-.room-summary { 
-    background: #f0f7f7; /* Hyvin vaalea turkoosi tausta */
-    padding: 10px; 
-    border-radius: 8px; 
-    margin-bottom: 15px; 
-    border: 1px dashed var(--p);
-    color: var(--text);
-}
-
-.category-item { 
-    background: var(--bg); 
-    border: 1px solid var(--sec-bg); 
-    padding: 15px; 
-    border-radius: 8px; 
-    margin-top: 10px; 
-    transition: opacity 0.3s; 
-}
-
-.category-item.locked { 
-    border-color: var(--p); 
-    background: #eef9f9; /* Lukitun korostusväri */
-}
-
-.bar-bg { 
-    background: var(--sec-bg); 
-    height: 12px; 
-    border-radius: 6px; 
-    margin: 8px 0; 
-    overflow: hidden; 
-}
-
-.bar-fill { 
-    background: var(--p); 
-    height: 100%; 
-    width: 0%; 
-    transition: width 0.3s; 
-}
-
-.bar-room { background: var(--p); }
-
+/* Apu-luokat asettelulle */
 .flex { 
     display: flex; 
     justify-content: space-between; 
@@ -100,246 +53,415 @@ input {
     color: var(--text);
 }
 
-/* YLEISET BUTTON-TYYLIT */
-button { 
-    padding: 10px 15px; 
-    border: none; 
-    border-radius: 6px; 
-    background: var(--p); /* Oletus on pääväri (turkoosi) */
-    color: white; 
-    cursor: pointer; 
-    font-weight: bold; 
-    transition: background 0.2s;
-}
-
-button:hover { opacity: 0.9; }
-
-/* SPESIFIT NAPIT */
-.btn-add { 
-    background: var(--accent); /* Oranssi korostus lisäyksille */
-    margin-top: 10px; 
-    width: 100%; 
-}
-
-.btn-edit { 
-    background: var(--text); /* Hillitty tumma editointiin */
-    font-size: 0.7em; 
-    padding: 3px 6px; 
-}
-
-.btn-del { 
-    background: var(--danger); /* Pehmennetty punainen */
-    font-size: 0.8em; 
-}
-
-.btn-sec { 
-    background: #6c7a89; /* Neutraali siniharmaa vähentämiseen */
-}
-
-/* MOBIILIOPTIMOIDUT NAPIT */
-.btn-small { 
-    padding: 12px 16px; 
-    font-size: 1.1em; 
-    min-width: 50px; 
-    margin: 4px 2px;
-}
-
-/* LUKITUSNAPIT */
-.btn-lock { 
-    background: var(--p); 
-    font-size: 0.8em; 
-    margin-left: 5px; 
-}
-
-.btn-unlock { 
-    background: var(--accent); /* Oranssi huomioväri lukituksen avaukseen */
-    font-size: 0.8em; 
-    margin-left: 5px; 
-}
-
-/* YLÄPALKIN NAPIT */
+/* =========================================
+   3. YLÄPALKKI JA YHTEENVETO (DASHBOARD)
+   ========================================= */
 .backup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-.btn-export { background: #5D6D7E; }
-.btn-import { background: #5D6D7E; }
-.btn-text { background: var(--text); grid-column: span 2; }
 #fileInput { display: none; }
 
-.category-form { 
+/* Koko asunnon tilanne -laatikko */
+.overall-summary {
+    background: #e0f2f1; /* Todella vaalea turkoosi */
+    border: 1px solid var(--p);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.stat-box {
+    background: white;
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stat-label {
+    display: block; font-size: 0.7em; color: #666; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.stat-value {
+    display: block; font-size: 1.1em; font-weight: bold; color: var(--text); margin-top: 2px;
+}
+
+/* Tulostaulun rivit */
+.dashboard-item { margin-bottom: 10px; font-size: 0.9em; }
+.dashboard-label { display: flex; justify-content: space-between; margin-bottom: 3px; font-weight: 500; }
+
+/* Lajitteluvalikko */
+.sort-container {
+    display: flex; justify-content: flex-end; align-items: center;
+    margin-bottom: 15px; gap: 10px; font-size: 0.9em; color: #666;
+}
+.sort-select {
+    padding: 8px 12px; border: 1px solid var(--p); border-radius: 6px;
+    background: var(--white); color: var(--text); font-size: 0.95em; cursor: pointer; outline: none;
+}
+
+/* =========================================
+   4. HUONEKORTIT JA KATEGORIAT
+   ========================================= */
+.room-section { 
+    border: 2px solid var(--p); 
+    border-radius: 12px; 
+    padding: 15px; 
+    margin-bottom: 20px; 
+    background: var(--white); 
+}
+
+.room-summary { 
     background: #f0f7f7; 
     padding: 10px; 
     border-radius: 8px; 
+    margin-bottom: 15px; 
+    border: 1px dashed var(--p);
+    color: var(--text);
+}
+
+.category-item { 
+    background: var(--bg); 
+    border: 1px solid var(--sec-bg); 
+    padding: 15px; 
+    border-radius: 8px; 
     margin-top: 10px; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 8px; 
 }
 
-.edit-controls { 
-    display: flex; 
-    gap: 3px; 
-    margin-top: 5px; 
-    flex-wrap: wrap; 
-    align-items: center; 
+.category-item.locked { 
+    border-color: var(--p); 
+    background: #eef9f9; 
 }
 
-.control-label { 
-    font-size: 0.8em; 
-    color: #666; 
-    width: 100%; 
-    margin-bottom: 2px; 
+.category-form { 
+    background: #f0f7f7; padding: 10px; border-radius: 8px; 
+    margin-top: 10px; display: flex; flex-direction: column; gap: 8px; 
 }
 
-.locked-badge { 
-    color: var(--accent); /* Valmis-teksti oranssilla */
-    font-weight: bold; 
-    font-size: 0.9em; 
-}
+/* Palkit */
+.bar-bg { background: var(--sec-bg); height: 12px; border-radius: 6px; margin: 8px 0; overflow: hidden; }
+.bar-fill { background: var(--p); height: 100%; width: 0%; transition: width 0.3s; }
+.bar-room { background: var(--p); }
 
-/* UUDET TYYLIT */
-
-/* Näytä kaikki / Pienennä -nappi */
-.btn-toggle {
-    background: transparent;
-    border: 1px solid var(--p);
-    color: var(--p);
-    padding: 6px 12px;
-    font-size: 0.9em;
-    margin-right: 5px;
-}
-
-.btn-toggle:hover {
-    background: var(--p);
-    color: white;
-}
-
-/* Kategorioiden määrä badge */
+/* Badget ja yksityiskohdat */
 .cat-count-badge {
-    background: var(--white);
-    border: 1px solid var(--sec-bg);
-    color: #666;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75em;
-    white-space: nowrap;
+    background: var(--white); border: 1px solid var(--sec-bg); 
+    color: #666; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; white-space: nowrap;
 }
-
-/* Animaatio sisällön aukeamiselle (valinnainen, mutta kiva) */
-.room-details {
-    animation: fadeIn 0.3s ease-in-out;
-}
+.room-details { animation: fadeIn 0.3s ease-in-out; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* UUSI: X-nappi huoneen poistoon */
-.btn-x {
-    background: transparent;
-    color: #e74c3c; /* Kirkas punainen */
-    border: 1px solid #e74c3c;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4em;
-    line-height: 1;
-    border-radius: 50%; /* Ympyrän muotoinen */
-    transition: all 0.2s;
+/* =========================================
+   5. NAPIT (BUTTONS)
+   ========================================= */
+/* Yleinen nappityyli */
+button { 
+    padding: 10px 15px; border: none; border-radius: 6px; 
+    background: var(--p); color: white; cursor: pointer; font-weight: bold; 
+    transition: background 0.2s, transform 0.1s;
 }
+button:hover { opacity: 0.9; }
 
-.btn-x:hover {
-    background: #e74c3c;
-    color: white;
-}
+/* Toiminnalliset napit */
+.btn-add { background: var(--accent); margin-top: 10px; width: 100%; }
+.btn-edit { background: var(--text); font-size: 0.7em; padding: 3px 6px; }
+.btn-del { background: var(--danger); font-size: 0.8em; }
+.btn-sec { background: #6c7a89; }
+.btn-small { padding: 12px 16px; font-size: 1.1em; min-width: 50px; margin: 4px 2px; }
 
-/* UUSI: Leveä toggle-nappi kortin pohjalle */
+/* Lukitus */
+.btn-lock { background: var(--p); font-size: 0.8em; margin-left: 5px; }
+.btn-unlock { background: var(--accent); font-size: 0.8em; margin-left: 5px; }
+
+/* Backup / Export */
+.btn-export, .btn-import { background: #5D6D7E; }
+.btn-text { background: var(--text); grid-column: span 2; }
+
+/* Erikoisnapit */
+.btn-toggle { background: transparent; border: 1px solid var(--p); color: var(--p); padding: 6px 12px; font-size: 0.9em; margin-right: 5px; }
+.btn-toggle:hover { background: var(--p); color: white; }
+
 .btn-toggle-wide {
+    width: 100%; background: white; border: 1px solid var(--p); color: var(--p);
+    padding: 8px; font-size: 0.9em; border-radius: 6px; margin-bottom: 10px;
+}
+.btn-toggle-wide:hover { background: var(--p); color: white; }
+
+.btn-x {
+    background: transparent; color: #e74c3c; border: 1px solid #e74c3c;
+    width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 1.4em; line-height: 1; border-radius: 50%;
+}
+.btn-x:hover { background: #e74c3c; color: white; }
+
+.btn-star {
+    background: transparent; border: none; font-size: 1.5em; cursor: pointer; color: #ccc;
+    padding: 0 5px; line-height: 1; transition: transform 0.2s, color 0.2s;
+}
+.btn-star.active { color: #f1c40f; transform: scale(1.1); }
+.btn-open-cat {
+    width: 100%; background: white; border: 2px solid var(--sec-bg); color: var(--p);
+    padding: 12px; font-weight: bold; margin-top: 10px; border-radius: 8px;
+}
+.btn-open-cat:hover { border-color: var(--p); background: #f0f9f9; }
+
+/* =========================================
+   6. MODAALI (FOCUS MODE)
+   ========================================= */
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(255, 255, 255, 0.98); z-index: 1000;
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px; box-sizing: border-box; overflow-y: auto;
+}
+.modal.hidden { display: none; }
+.modal-content {
+    width: 100%; max-width: 500px; background: white; height: 100%;
+    display: flex; flex-direction: column; justify-content: space-between;
+}
+.modal-header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--sec-bg); }
+.modal-footer { margin-top: auto; padding-top: 10px; }
+
+.btn-close-modal {
+    width: 100%; padding: 18px; font-size: 1.2em;
+    background: var(--p); color: white; border-radius: 12px;
+}
+
+/* Tiivistetty tavoitekortti (Modaalin sisällä) */
+.big-stat-display {
+    text-align: center; margin: 10px 0; padding: 15px;
+    background: var(--bg); border-radius: 12px; border: 2px solid var(--p);
+    display: flex; flex-direction: column; justify-content: center;
+}
+.stat-row { display: flex; justify-content: center; align-items: baseline; gap: 10px; margin-bottom: 5px; }
+.big-number { font-size: 3.5em; font-weight: bold; color: var(--p); line-height: 1; }
+.goal-number { font-size: 1.5em; color: #999; font-weight: normal; }
+.sub-label { color: #666; font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+
+/* Jättinapit (3 saraketta) */
+.control-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;
+}
+.btn-large {
+    padding: 0; height: 65px; font-size: 1.4em; font-weight: bold; border-radius: 12px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center;
+}
+.btn-large:active { transform: translateY(4px); box-shadow: none; }
+.btn-large.plus { background: var(--accent); color: white; border: 1px solid rgba(0,0,0,0.1); }
+.btn-large.minus { background: white; color: var(--text); border: 2px solid var(--sec-bg); }
+
+/* Korjausnapit (4 saraketta) */
+.adjust-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 8px;
+}
+.btn-adjust {
+    padding: 0; height: 50px; font-size: 1.1em; font-weight: bold;
+    border-radius: 8px; background: white; border: 2px solid #ddd; color: #555;
+}
+.btn-adjust:active { background: #eee; transform: translateY(2px); }
+
+/* ... aiemmat tyylit ... */
+
+/* POISTA HUONE -NAPPI (Kortin pohjalle) */
+.btn-delete-room {
     width: 100%;
     background: white;
-    border: 1px solid var(--p);
-    color: var(--p);
-    padding: 8px;
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    padding: 12px;
+    font-weight: bold;
+    border-radius: 8px;
+    margin-top: 20px;
+    transition: all 0.2s;
+    text-transform: uppercase;
     font-size: 0.9em;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    transition: background 0.2s;
+    letter-spacing: 0.5px;
 }
 
-.btn-toggle-wide:hover {
-    background: var(--p);
+.btn-delete-room:hover {
+    background: var(--danger);
     color: white;
-}
-
-/* Kategoria-badgen hienosäätö */
-.cat-count-badge {
-    background: var(--white);
-    border: 1px solid var(--sec-bg);
-    color: #666;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75em;
-    white-space: nowrap;
-}
-
-.room-details {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 /* ... aiemmat tyylit ... */
 
-/* SUOSIKKI (PINNAUS) NAPPI */
-.btn-star {
-    background: transparent;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    color: #ccc; /* Passiivinen harmaa */
-    padding: 0 5px;
-    line-height: 1;
-    transition: transform 0.2s, color 0.2s;
+/* Estetyn napin tyylit */
+.btn-delete-room:disabled {
+    background-color: #f5f5f5;
+    border-color: #ddd;
+    color: #aaa;
+    cursor: not-allowed;
+    pointer-events: none; /* Estää klikkauksen */
 }
 
-.btn-star.active {
-    color: #f1c40f; /* Kulta */
-    transform: scale(1.1);
+/* Infoteksti estetyn napin yhteyteen */
+.delete-info-text {
+    font-size: 0.85em;
+    color: var(--accent); /* Oranssi huomioväri */
+    text-align: center;
+    margin-bottom: 5px;
+    display: block;
+    font-weight: 500;
 }
 
-.btn-star:hover {
-    transform: scale(1.2);
+/* ... aiemmat tyylit ... */
+
+/* MODAALIN LOMAKEKENTÄT */
+.modal-input-group {
+    margin-bottom: 20px;
 }
 
-/* LAJITTELUVALIKKO */
-.sort-container {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    margin-bottom: 15px;
-    gap: 10px;
-    font-size: 0.9em;
-    color: #666;
+.modal-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: var(--p);
 }
 
-.sort-select {
-    padding: 8px 12px;
-    border: 1px solid var(--p);
-    border-radius: 6px;
-    background: var(--white);
-    color: var(--text);
-    font-size: 0.95em;
-    cursor: pointer;
+.modal-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1em;
+    border: 2px solid var(--sec-bg);
+    border-radius: 8px;
+    box-sizing: border-box; /* Varmistaa että padding ei levitä elementtiä */
     outline: none;
+    transition: border-color 0.2s;
 }
 
-.sort-select:focus {
-    box-shadow: 0 0 0 2px rgba(74, 158, 156, 0.2);
+.modal-input:focus {
+    border-color: var(--p);
 }
 
-/* ... loput tyylit (suosikkinappi jne) ... */
+/* NAPIT VIEREKKÄIN (Tallenna / Peruuta) */
+.modal-btn-group {
+    display: flex;
+    gap: 10px;
+    margin-top: auto; /* Työntää napit pohjalle */
+    padding-top: 20px;
+}
+
+.btn-save {
+    flex: 2; /* Vie enemmän tilaa */
+    background: var(--p);
+    padding: 15px;
+    font-size: 1.1em;
+    border-radius: 8px;
+}
+
+.btn-cancel {
+    flex: 1;
+    background: white;
+    border: 2px solid #ccc;
+    color: #666;
+    padding: 15px;
+    font-size: 1.1em;
+    border-radius: 8px;
+}
+
+/* Listanäkymän "Lisää kategoria" -nappi */
+.btn-add-trigger {
+    width: 100%;
+    padding: 15px;
+    background: white;
+    border: 2px dashed var(--p);
+    color: var(--p);
+    font-weight: bold;
+    border-radius: 8px;
+    margin-top: 15px;
+    cursor: pointer;
+}
+
+.btn-add-trigger:hover {
+    background: #f0f9f9;
+}
+
+/* ... aiemmat tyylit ... */
+
+/* ASETUKSET-NAPPI (Etusivulla) */
+.btn-settings {
+    background: transparent;
+    color: #666;
+    border: 1px solid #ccc;
+    width: 100%;
+    margin-top: 10px;
+    font-weight: normal;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-settings:hover {
+    background: #f9f9f9;
+    color: var(--text);
+    border-color: var(--text);
+}
+
+/* ASETUS-MODAALIN OSIOT */
+.settings-section {
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.settings-label {
+    font-size: 0.85em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 10px;
+    display: block;
+    letter-spacing: 1px;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* Jaa-nappi (Iso) */
+.btn-share {
+    width: 100%;
+    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); /* WhatsApp vihreä */
+    color: white;
+    padding: 15px;
+    font-size: 1.1em;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Vaaravyöhyke */
+.danger-zone {
+    margin-top: 30px;
+    padding: 15px;
+    background: #fff5f5;
+    border: 1px solid #ffcccc;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.btn-reset {
+    background: white;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-reset:hover {
+    background: var(--danger);
+    color: white;
+}

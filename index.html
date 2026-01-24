@@ -16,23 +16,21 @@
         
         <div id="room-dashboard"></div>
 
-        <div class="backup-grid">
-            <button class="btn-export" onclick="exportToCSV()">📥 Vie CSV</button>
-            <button class="btn-import" onclick="document.getElementById('fileInput').click()">📤 Tuo CSV</button>
-            <button class="btn-text" onclick="handleTextTransfer()">📝 Kopioi / Tuo tekstinä</button>
-            <input type="file" id="fileInput" accept=".csv" onchange="importFromCSV(event)">
-        </div>
+        <button class="btn-settings" onclick="openSettingsModal()">⚙️ Asetukset ja Varmuuskopiointi</button>
+        
+        <input type="file" id="fileInput" accept=".csv" onchange="importFromCSV(event)" style="display:none;">
     </header>
 
     <div class="card">
-        <h3>Luo uusi huone</h3>
-        <div class="flex">
-            <input type="text" id="roomInput" placeholder="Esim. Keittiö">
-            <button onclick="handleCreateRoom()">Lisää</button>
-        </div>
+        <button class="btn-add-trigger" onclick="openAddRoomModal()">+ Luo uusi huone</button>
     </div>
 
     <div id="roomContainer"></div>
+</div>
+
+<div id="edit-modal" class="modal hidden">
+    <div class="modal-content" id="modal-body">
+        </div>
 </div>
 
 <script src="app.js"></script>
