@@ -82,7 +82,7 @@ function renderStatsModal() {
             listHTML += `
                 <div class="stats-detailed-row">
                     <div class="flex">
-                        <strong>${isDone ? '✅' : '📦'} ${room.name}</strong>
+                        <strong>${isDone ? '✅' : '📦'} ${escapeHtml(room.name)}</strong>
                         <span style="color:${isDone ? 'var(--p)' : '#666'}; font-weight:bold;">${Math.round(room.rPerc)}&thinsp;%</span>
                     </div>
                     <div class="bar-bg" style="height:8px; margin:5px 0;"><div class="bar-fill" style="width:${Math.min(100, room.rPerc)}%"></div></div>
@@ -181,11 +181,11 @@ function renderCreateRoomModal() {
 
 function renderAddCategoryModal(activeAddRoomId) {
     if (!activeAddRoomId) return;
-    const room = state.find(r => r.id == activeAddRoomId); // Käytetään ==
+    // Nyt käytetään strict comparison (===), koska migraatio varmistaa ID:n olevan string
+    const room = state.find(r => r.id === activeAddRoomId); 
     if (!room) return;
 
-    // Generoidaan napit. Huom: handleAddCategory('${room.id}') lisää hipsuja jos ID on string, mutta toimii ilmankin.
-    // Selkeintä on antaa JS:n hoitaa tyypit.
+    // Turvallisuuden vuoksi hipsut ID:n ympärille onclick-kutsussa: handleAddCategory('${room.id}')
     const buttons = renderModalButtons("closeAddCategoryModal()", `handleAddCategory('${room.id}')`, "Tallenna");
     const adjusterGrid = renderAdjusterGrid("adjustAddModalInput");
 
@@ -195,7 +195,7 @@ function renderAddCategoryModal(activeAddRoomId) {
                 <button onclick="closeAddCategoryModal()" style="background:none; border:none; font-size:1.5em; padding:0; cursor:pointer; color:#666;">←</button>
                 <h2 style="margin:0; font-size:1.4em;">Lisää kategoria</h2>
             </div>
-            <div style="color:#666; font-size:0.9em; margin-left:35px;">${room.name}</div>
+            <div style="color:#666; font-size:0.9em; margin-left:35px;">${escapeHtml(room.name)}</div>
         </div>
         <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
             <div class="modal-input-group">
@@ -220,16 +220,15 @@ function renderAddCategoryModal(activeAddRoomId) {
 }
 
 function renderCategoryEditModal(roomId, catId) {
-    const room = state.find(r => r.id == roomId); // Käytetään ==
+    const room = state.find(r => r.id === roomId);
     if (!room) return;
-    const cat = room.categories.find(c => c.id == catId); // Käytetään ==
+    const cat = room.categories.find(c => c.id === catId);
     if (!cat) return;
 
     const goal = Math.ceil(cat.start / 3);
     const diff = cat.removed - goal;
     const isL = cat.locked;
 
-    // Lisätään hipsut ID-parametrien ympärille, jotta string-ID:t eivät katkaise onclick-attribuuttia
     const deleteButton = renderDangerButton("Poista", `handleDeleteCat('${room.id}','${cat.id}')`);
     const removedGrid = renderAdjusterGrid("handleUpdateRemoved", `'${roomId}','${catId}'`);
     const correctionGrid = renderCorrectionGrid("handleEditStartAmount", `'${roomId}','${catId}'`);
@@ -238,9 +237,9 @@ function renderCategoryEditModal(roomId, catId) {
         <div class="modal-header">
             <div style="display:flex; align-items:center; gap:10px;">
                 <button onclick="closeCategoryModal()" style="background:none; border:none; font-size:1.5em; padding:0; cursor:pointer; color:#666;">←</button>
-                <h2 style="margin:0; font-size:1.4em;">${cat.name}</h2>
+                <h2 style="margin:0; font-size:1.4em;">${escapeHtml(cat.name)}</h2>
             </div>
-            <div style="color:#666; font-size:0.9em; margin-left:35px;">${room.name}</div>
+            <div style="color:#666; font-size:0.9em; margin-left:35px;">${escapeHtml(room.name)}</div>
         </div>
 
         <div class="big-stat-display">
@@ -273,7 +272,7 @@ function renderCategoryEditModal(roomId, catId) {
 }
 
 function renderRoomModal(roomId) {
-    const room = state.find(r => r.id == roomId); // Käytetään ==
+    const room = state.find(r => r.id === roomId);
     if (!room) return closeRoomModal();
 
     let rStart = 0, rGoal = 0, rRem = 0;
@@ -292,7 +291,7 @@ function renderRoomModal(roomId) {
         catListHTML += `
             <div class="category-item ${isL ? 'locked' : ''}" onclick="openCategoryModal('${room.id}', '${cat.id}')" style="cursor:pointer;">
                 <div class="flex">
-                    <strong>${cat.name} ${isL ? '🔒' : ''}</strong>
+                    <strong>${escapeHtml(cat.name)} ${isL ? '🔒' : ''}</strong>
                     <div style="color:var(--p);">➔</div>
                 </div>
                 <div style="font-size:0.9em; margin:5px 0;">Alku: ${cat.start} | Poistettu: ${cat.removed}</div>
@@ -308,7 +307,7 @@ function renderRoomModal(roomId) {
         <div class="modal-header">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
                 <button onclick="closeRoomModal()" style="background:none; border:none; font-size:1.5em; padding:0; cursor:pointer; color:#666;">←</button>
-                <h2 style="margin:0; font-size:1.4em;">${room.name}</h2>
+                <h2 style="margin:0; font-size:1.4em;">${escapeHtml(room.name)}</h2>
             </div>
             
             <div class="overall-summary" style="margin-bottom:0; padding:10px;">
@@ -317,24 +316,3 @@ function renderRoomModal(roomId) {
                     <strong style="color:var(--p); font-size:1.1em;">${Math.round(rPerc)}&thinsp;%</strong>
                 </div>
                 <div class="bar-bg" style="height:10px; margin:5px 0;"><div class="bar-fill" style="width:${Math.min(100, rPerc)}%"></div></div>
-                <div class="stats-mini-grid" style="margin-top:5px;">
-                    <div>Alku: ${rStart}</div>
-                    <div>Tavoite: ${rGoal}</div>
-                    <div style="font-weight:bold;">Poistettu: ${rRem}</div>
-                </div>
-            </div>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
-            <div id="cat-list">${catListHTML}</div>
-            
-            <button class="btn-add-trigger" onclick="openAddCategoryModal('${room.id}')">
-                + Uusi kategoria
-            </button>
-
-            <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-                ${deleteButton}
-            </div>
-        </div>
-    `;
-}

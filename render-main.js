@@ -89,7 +89,9 @@ function draw() {
             case 'last-edited': return b.lastEdited - a.lastEdited;
             case 'progress-desc': return b.rPerc - a.rPerc;
             case 'alpha-asc': return a.name.localeCompare(b.name);
-            default: return a.id - b.id;
+            default: 
+                // ID on nyt string, joten ei voi vähentää. Käytetään localeCompare.
+                return String(a.id).localeCompare(String(b.id));
         }
     });
 
@@ -110,8 +112,8 @@ function draw() {
         rDiv.innerHTML = `
             <div class="flex">
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <button class="btn-star ${room.pinned ? 'active' : ''}" onclick="handleTogglePin(${room.id})" title="Kiinnitä">★</button>
-                    <h2>${room.name} ${room.rPerc >= 100 ? '🏆' : ''}</h2>
+                    <button class="btn-star ${room.pinned ? 'active' : ''}" onclick="handleTogglePin('${room.id}')" title="Kiinnitä">★</button>
+                    <h2>${escapeHtml(room.name)} ${room.rPerc >= 100 ? '🏆' : ''}</h2>
                 </div>
                 <div style="color:var(--p); font-size:1.2em;">➔</div>
             </div>

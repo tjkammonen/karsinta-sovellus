@@ -13,6 +13,20 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof draw === 'function') draw();
 });
 
+// Lisätty: Escape-nappi sulkee modaalit
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        // Suljetaan modaali, jos sellainen on auki.
+        // resetViews palauttaa päänäkymään, tai voit muokata sitä palaamaan tason ylöspäin.
+        // Tässä yksinkertainen "sulje kaikki" -logiikka.
+        const modal = document.getElementById('edit-modal');
+        if (modal && !modal.classList.contains('hidden')) {
+            resetViews();
+            draw();
+        }
+    }
+});
+
 function handleSortChange(value) {
     currentSort = value;
     draw();
