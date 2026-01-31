@@ -1,4 +1,62 @@
-// --- RENDER-MODALS.JS ---
+// --- RENDER-MODALS.JS: Modaalien HTML-sisällöt ---
+
+// --- APUFUNKTIOT (KOMPONENTIT) ---
+
+// 1. Footer-napit (Peru / Tallenna)
+function renderModalButtons(cancelAction, confirmAction, confirmText = "Tallenna") {
+    return `
+        <div class="modal-btn-group">
+            <button class="btn-cancel" onclick="${cancelAction}">Peru</button>
+            <button class="btn-save" onclick="${confirmAction}">${confirmText}</button>
+        </div>
+    `;
+}
+
+// 2. Tavaroiden säätöruudukko (-5, +1, +5 jne.)
+function renderAdjusterGrid(fnName, extraArgs = "") {
+    const prefix = extraArgs ? `${extraArgs},` : "";
+    return `
+        <div class="control-grid">
+            <button class="btn-large minus" onclick="${fnName}(${prefix}-5)">-&thinsp;5</button>
+            <button class="btn-large plus" onclick="${fnName}(${prefix}1)">+&thinsp;1</button>
+            <button class="btn-large plus" onclick="${fnName}(${prefix}5)">+&thinsp;5</button>
+            <button class="btn-large minus" onclick="${fnName}(${prefix}-10)">-&thinsp;10</button>
+            <button class="btn-large minus" onclick="${fnName}(${prefix}-1)">-&thinsp;1</button>
+            <button class="btn-large plus" onclick="${fnName}(${prefix}10)">+&thinsp;10</button>
+        </div>
+    `;
+}
+
+// 3. Pienemmät korjausnapit (4 kpl)
+function renderCorrectionGrid(fnName, extraArgs = "") {
+    const prefix = extraArgs ? `${extraArgs},` : "";
+    return `
+        <div class="adjust-grid">
+            <button class="btn-adjust" onclick="${fnName}(${prefix}-5)">-&thinsp;5</button>
+            <button class="btn-adjust" onclick="${fnName}(${prefix}-1)">-&thinsp;1</button>
+            <button class="btn-adjust" onclick="${fnName}(${prefix}1)">+&thinsp;1</button>
+            <button class="btn-adjust" onclick="${fnName}(${prefix}5)">+&thinsp;5</button>
+        </div>
+    `;
+}
+
+// 4. Vaaralliset toiminnot (Poista)
+function renderDangerButton(text, action, disabled = false, infoText = "") {
+    if (disabled) {
+        return `
+            <div style="margin-top: 20px;">
+                <span class="delete-info-text">${infoText}</span>
+                <button class="btn-delete-room" disabled>${text}</button>
+            </div>`;
+    }
+    return `
+        <div style="margin-top: 20px;">
+            <button class="btn-delete-room" onclick="${action}">${text}</button>
+        </div>`;
+}
+
+
+// --- VARSINAISET MODAALIT ---
 
 // 1. TILASTOT / ERITTELY
 function renderStatsModal() {
@@ -82,6 +140,8 @@ function renderStatsModal() {
 
 // 2. ASETUKSET
 function renderSettingsModal() {
+    const resetButton = renderDangerButton("Tyhjennä kaikki tiedot", "handleResetApp()");
+
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-header"><h2 style="margin:0; font-size:1.4em;">Asetukset</h2></div>
         <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
@@ -99,17 +159,20 @@ function renderSettingsModal() {
                     <button class="btn-import" onclick="document.getElementById('fileInput').click()">Tuo</button>
                 </div>
             </div>
+            
             <div class="danger-zone">
                 <strong style="color:var(--danger)">Nollaus</strong>
-                <button class="btn-reset" onclick="handleResetApp()">Tyhjennä kaikki tiedot</button>
+                ${resetButton}
             </div>
         </div>
         <div class="modal-footer"><button class="btn-close-modal" onclick="closeSettingsModal()">Sulje</button></div>
     `;
 }
 
-// 3. HUONEEN LUONTI
-function renderAddRoomModal() {
+// 3. HUONEEN LUONTI (KORJATTU NIMI: renderAddRoomModal -> renderCreateRoomModal)
+function renderCreateRoomModal() {
+    const buttons = renderModalButtons("closeAddRoomModal()", "triggerCreateRoom()", "Luo");
+
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-header"><h2 style="margin:0; font-size:1.4em;">Uusi huone</h2></div>
         <div style="flex: 1; overflow-y: auto; padding-top: 20px;">
@@ -118,19 +181,20 @@ function renderAddRoomModal() {
                 <input type="text" id="modal-room-name" class="modal-input" placeholder="Esim. Varasto" autocomplete="off">
             </div>
         </div>
-        <div class="modal-btn-group">
-            <button class="btn-cancel" onclick="closeAddRoomModal()">Peru</button>
-            <button class="btn-save" onclick="triggerCreateRoom()">Luo</button>
-        </div>
+        ${buttons}
     `;
     setTimeout(() => { const i = document.getElementById('modal-room-name'); if(i) i.focus(); }, 100);
 }
 
-// 4. KATEGORIAN LISÄYS (PÄIVITETTY: Ei inputtia, vaan iso näyttö)
+// 4. KATEGORIAN LISÄYS
 function renderAddCategoryModal(activeAddRoomId) {
     if (!activeAddRoomId) return;
     const room = state.find(r => r.id === activeAddRoomId);
     if (!room) return;
+
+    // Generoidaan napit
+    const buttons = renderModalButtons("closeAddCategoryModal()", `handleAddCategory(${room.id})`, "Tallenna");
+    const adjusterGrid = renderAdjusterGrid("adjustAddModalInput");
 
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-header">
@@ -151,20 +215,13 @@ function renderAddCategoryModal(activeAddRoomId) {
                 <div id="modal-cat-start" class="big-number" style="font-size:3em; color:var(--text);">0</div>
             </div>
 
-            <div class="control-grid" style="margin-bottom:20px;">
-                <button class="btn-large minus" onclick="adjustAddModalInput(-5)">-&thinsp;5</button>
-                <button class="btn-large plus" onclick="adjustAddModalInput(1)">+&thinsp;1</button>
-                <button class="btn-large plus" onclick="adjustAddModalInput(5)">+&thinsp;5</button>
-                <button class="btn-large minus" onclick="adjustAddModalInput(-10)">-&thinsp;10</button>
-                <button class="btn-large minus" onclick="adjustAddModalInput(-1)">-&thinsp;1</button>
-                <button class="btn-large plus" onclick="adjustAddModalInput(10)">+&thinsp;10</button>
+            <div style="margin-bottom:20px;">
+                ${adjusterGrid}
             </div>
+
             <p style="color:#666; font-size:0.9em; text-align:center;">Tavoite: 33&thinsp;% tästä</p>
         </div>
-        <div class="modal-btn-group">
-            <button class="btn-cancel" onclick="closeAddCategoryModal()">Peru</button>
-            <button class="btn-save" onclick="handleAddCategory(${room.id})">Tallenna</button>
-        </div>
+        ${buttons}
     `;
     setTimeout(() => { const i = document.getElementById('modal-cat-name'); if(i) i.focus(); }, 100);
 }
@@ -179,6 +236,11 @@ function renderCategoryEditModal(roomId, catId) {
     const goal = Math.ceil(cat.start / 3);
     const diff = cat.removed - goal;
     const isL = cat.locked;
+
+    // Generoidaan komponentit
+    const deleteButton = renderDangerButton("Poista", `handleDeleteCat(${room.id},${cat.id})`);
+    const removedGrid = renderAdjusterGrid("handleUpdateRemoved", `${roomId},${catId}`);
+    const correctionGrid = renderCorrectionGrid("handleEditStartAmount", `${roomId},${catId}`);
 
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-header">
@@ -197,27 +259,17 @@ function renderCategoryEditModal(roomId, catId) {
         </div>
         ${!isL ? `
         <div style="flex: 1; overflow-y: auto;">
-            <div class="control-grid" style="margin-top:20px;">
-                <button class="btn-large minus" onclick="handleUpdateRemoved(${roomId},${catId},-5)">-&thinsp;5</button>
-                <button class="btn-large plus" onclick="handleUpdateRemoved(${roomId},${catId},1)">+&thinsp;1</button>
-                <button class="btn-large plus" onclick="handleUpdateRemoved(${roomId},${catId},5)">+&thinsp;5</button>
-                <button class="btn-large minus" onclick="handleUpdateRemoved(${roomId},${catId},-10)">-&thinsp;10</button>
-                <button class="btn-large minus" onclick="handleUpdateRemoved(${roomId},${catId},-1)">-&thinsp;1</button>
-                <button class="btn-large plus" onclick="handleUpdateRemoved(${roomId},${catId},10)">+&thinsp;10</button>
+            <div style="margin-top:20px;">
+                ${removedGrid}
             </div>
             
             <div style="margin-top:15px; border-top:1px solid #eee; padding-top:15px; padding-bottom:10px;">
                 <div style="color:#666; font-size:0.85em; text-align:center; margin-bottom:5px;">Korjaa alkumäärää (Nyt: <strong>${cat.start}</strong>)</div>
-                <div class="adjust-grid">
-                    <button class="btn-adjust" onclick="handleEditStartAmount(${roomId},${catId},-5)">-&thinsp;5</button>
-                    <button class="btn-adjust" onclick="handleEditStartAmount(${room.id},${cat.id},-1)">-&thinsp;1</button>
-                    <button class="btn-adjust" onclick="handleEditStartAmount(${room.id},${cat.id},1)">+&thinsp;1</button>
-                    <button class="btn-adjust" onclick="handleEditStartAmount(${room.id},${cat.id},5)">+&thinsp;5</button>
-                </div>
+                ${correctionGrid}
             </div>
             <div style="margin-top: 20px;">
                 <button class="btn-lock" onclick="handleToggleLock(${room.id},${cat.id})" style="width:100%; font-size:0.9em; padding:12px; background:white; color:var(--p); border:1px solid var(--p); margin-bottom:10px;">Lukitse</button>
-                <button class="btn-delete-room" onclick="handleDeleteCat(${room.id},${cat.id})" style="width:100%; border:1px solid var(--danger); color:var(--danger); background:white;">Poista</button>
+                ${deleteButton}
             </div>
         </div>` : `
         <div style="text-align:center; padding:30px; background:#f0f9f9; border-radius:12px; margin-bottom:20px;">
@@ -228,7 +280,7 @@ function renderCategoryEditModal(roomId, catId) {
     `;
 }
 
-// 6. HUONE-NÄKYMÄ (PÄIVITETTY YLÄOSA)
+// 6. HUONE-NÄKYMÄ
 function renderRoomModal(roomId) {
     const room = state.find(r => r.id === roomId);
     if (!room) return closeRoomModal();
@@ -257,6 +309,8 @@ function renderRoomModal(roomId) {
             </div>
         `;
     });
+
+    const deleteButton = renderDangerButton("Poista huone", `handleDeleteRoom(${room.id})`, hasLockedCats, "Huoneessa on lukittuja kategorioita.");
 
     const container = document.getElementById('modal-body');
     container.innerHTML = `
@@ -288,8 +342,7 @@ function renderRoomModal(roomId) {
             </button>
 
             <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-                ${hasLockedCats ? `<div class="delete-info-text">Huoneessa on lukittuja kategorioita.</div>` : ''}
-                <button class="btn-delete-room" onclick="handleDeleteRoom(${room.id})" ${hasLockedCats ? 'disabled' : ''}>Poista huone</button>
+                ${deleteButton}
             </div>
         </div>
     `;
