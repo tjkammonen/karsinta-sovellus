@@ -2,7 +2,6 @@
 
 // --- APUFUNKTIOT (KOMPONENTIT) ---
 
-// 1. Footer-napit (Peru / Tallenna)
 function renderModalButtons(cancelAction, confirmAction, confirmText = "Tallenna") {
     return `
         <div class="modal-btn-group">
@@ -12,7 +11,6 @@ function renderModalButtons(cancelAction, confirmAction, confirmText = "Tallenna
     `;
 }
 
-// 2. Tavaroiden säätöruudukko (-5, +1, +5 jne.)
 function renderAdjusterGrid(fnName, extraArgs = "") {
     const prefix = extraArgs ? `${extraArgs},` : "";
     return `
@@ -27,7 +25,6 @@ function renderAdjusterGrid(fnName, extraArgs = "") {
     `;
 }
 
-// 3. Pienemmät korjausnapit (4 kpl)
 function renderCorrectionGrid(fnName, extraArgs = "") {
     const prefix = extraArgs ? `${extraArgs},` : "";
     return `
@@ -40,7 +37,6 @@ function renderCorrectionGrid(fnName, extraArgs = "") {
     `;
 }
 
-// 4. Vaaralliset toiminnot (Poista)
 function renderDangerButton(text, action, disabled = false, infoText = "") {
     if (disabled) {
         return `
@@ -58,7 +54,6 @@ function renderDangerButton(text, action, disabled = false, infoText = "") {
 
 // --- VARSINAISET MODAALIT ---
 
-// 1. TILASTOT / ERITTELY
 function renderStatsModal() {
     const container = document.getElementById('modal-body');
     
@@ -138,7 +133,6 @@ function renderStatsModal() {
     `;
 }
 
-// 2. ASETUKSET
 function renderSettingsModal() {
     const resetButton = renderDangerButton("Tyhjennä kaikki tiedot", "handleResetApp()");
 
@@ -169,7 +163,6 @@ function renderSettingsModal() {
     `;
 }
 
-// 3. HUONEEN LUONTI (KORJATTU NIMI: renderAddRoomModal -> renderCreateRoomModal)
 function renderCreateRoomModal() {
     const buttons = renderModalButtons("closeAddRoomModal()", "triggerCreateRoom()", "Luo");
 
@@ -186,14 +179,14 @@ function renderCreateRoomModal() {
     setTimeout(() => { const i = document.getElementById('modal-room-name'); if(i) i.focus(); }, 100);
 }
 
-// 4. KATEGORIAN LISÄYS
 function renderAddCategoryModal(activeAddRoomId) {
     if (!activeAddRoomId) return;
-    const room = state.find(r => r.id === activeAddRoomId);
+    const room = state.find(r => r.id == activeAddRoomId); // Käytetään ==
     if (!room) return;
 
-    // Generoidaan napit
-    const buttons = renderModalButtons("closeAddCategoryModal()", `handleAddCategory(${room.id})`, "Tallenna");
+    // Generoidaan napit. Huom: handleAddCategory('${room.id}') lisää hipsuja jos ID on string, mutta toimii ilmankin.
+    // Selkeintä on antaa JS:n hoitaa tyypit.
+    const buttons = renderModalButtons("closeAddCategoryModal()", `handleAddCategory('${room.id}')`, "Tallenna");
     const adjusterGrid = renderAdjusterGrid("adjustAddModalInput");
 
     document.getElementById('modal-body').innerHTML = `
@@ -226,21 +219,20 @@ function renderAddCategoryModal(activeAddRoomId) {
     setTimeout(() => { const i = document.getElementById('modal-cat-name'); if(i) i.focus(); }, 100);
 }
 
-// 5. KATEGORIAN MUOKKAUS
 function renderCategoryEditModal(roomId, catId) {
-    const room = state.find(r => r.id === roomId);
+    const room = state.find(r => r.id == roomId); // Käytetään ==
     if (!room) return;
-    const cat = room.categories.find(c => c.id === catId);
+    const cat = room.categories.find(c => c.id == catId); // Käytetään ==
     if (!cat) return;
 
     const goal = Math.ceil(cat.start / 3);
     const diff = cat.removed - goal;
     const isL = cat.locked;
 
-    // Generoidaan komponentit
-    const deleteButton = renderDangerButton("Poista", `handleDeleteCat(${room.id},${cat.id})`);
-    const removedGrid = renderAdjusterGrid("handleUpdateRemoved", `${roomId},${catId}`);
-    const correctionGrid = renderCorrectionGrid("handleEditStartAmount", `${roomId},${catId}`);
+    // Lisätään hipsut ID-parametrien ympärille, jotta string-ID:t eivät katkaise onclick-attribuuttia
+    const deleteButton = renderDangerButton("Poista", `handleDeleteCat('${room.id}','${cat.id}')`);
+    const removedGrid = renderAdjusterGrid("handleUpdateRemoved", `'${roomId}','${catId}'`);
+    const correctionGrid = renderCorrectionGrid("handleEditStartAmount", `'${roomId}','${catId}'`);
 
     document.getElementById('modal-body').innerHTML = `
         <div class="modal-header">
@@ -268,21 +260,20 @@ function renderCategoryEditModal(roomId, catId) {
                 ${correctionGrid}
             </div>
             <div style="margin-top: 20px;">
-                <button class="btn-lock" onclick="handleToggleLock(${room.id},${cat.id})" style="width:100%; font-size:0.9em; padding:12px; background:white; color:var(--p); border:1px solid var(--p); margin-bottom:10px;">Lukitse</button>
+                <button class="btn-lock" onclick="handleToggleLock('${room.id}','${cat.id}')" style="width:100%; font-size:0.9em; padding:12px; background:white; color:var(--p); border:1px solid var(--p); margin-bottom:10px;">Lukitse</button>
                 ${deleteButton}
             </div>
         </div>` : `
         <div style="text-align:center; padding:30px; background:#f0f9f9; border-radius:12px; margin-bottom:20px;">
             <div style="font-size:3em;">🔒</div><h3>Lukittu</h3>
-            <button class="btn-unlock" onclick="handleToggleLock(${room.id},${cat.id})" style="margin-top:20px; padding:15px; font-size:1em; width:100%;">Avaa</button>
+            <button class="btn-unlock" onclick="handleToggleLock('${room.id}','${cat.id}')" style="margin-top:20px; padding:15px; font-size:1em; width:100%;">Avaa</button>
         </div>`}
         <div class="modal-footer"><button class="btn-close-modal" onclick="closeCategoryModal()">Valmis</button></div>
     `;
 }
 
-// 6. HUONE-NÄKYMÄ
 function renderRoomModal(roomId) {
-    const room = state.find(r => r.id === roomId);
+    const room = state.find(r => r.id == roomId); // Käytetään ==
     if (!room) return closeRoomModal();
 
     let rStart = 0, rGoal = 0, rRem = 0;
@@ -299,7 +290,7 @@ function renderRoomModal(roomId) {
         const perc = goal > 0 ? (cat.removed/goal)*100 : 0;
         const isL = cat.locked;
         catListHTML += `
-            <div class="category-item ${isL ? 'locked' : ''}" onclick="openCategoryModal(${room.id}, ${cat.id})" style="cursor:pointer;">
+            <div class="category-item ${isL ? 'locked' : ''}" onclick="openCategoryModal('${room.id}', '${cat.id}')" style="cursor:pointer;">
                 <div class="flex">
                     <strong>${cat.name} ${isL ? '🔒' : ''}</strong>
                     <div style="color:var(--p);">➔</div>
@@ -310,7 +301,7 @@ function renderRoomModal(roomId) {
         `;
     });
 
-    const deleteButton = renderDangerButton("Poista huone", `handleDeleteRoom(${room.id})`, hasLockedCats, "Huoneessa on lukittuja kategorioita.");
+    const deleteButton = renderDangerButton("Poista huone", `handleDeleteRoom('${room.id}')`, hasLockedCats, "Huoneessa on lukittuja kategorioita.");
 
     const container = document.getElementById('modal-body');
     container.innerHTML = `
@@ -337,7 +328,7 @@ function renderRoomModal(roomId) {
         <div style="flex: 1; overflow-y: auto; padding-top: 10px;">
             <div id="cat-list">${catListHTML}</div>
             
-            <button class="btn-add-trigger" onclick="openAddCategoryModal(${room.id})">
+            <button class="btn-add-trigger" onclick="openAddCategoryModal('${room.id}')">
                 + Uusi kategoria
             </button>
 

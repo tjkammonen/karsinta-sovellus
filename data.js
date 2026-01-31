@@ -2,13 +2,21 @@
 
 let state = JSON.parse(localStorage.getItem('karsinta_final_v1')) || [];
 
+// Uniikki ID-generaattori (varmistaa yhteensopivuuden merkkijonojen ja numeroiden välillä)
+function generateId() {
+    return typeof crypto.randomUUID === 'function' 
+        ? crypto.randomUUID() 
+        : Date.now() + '-' + Math.floor(Math.random() * 1000);
+}
+
 function sync() {
     localStorage.setItem('karsinta_final_v1', JSON.stringify(state));
     if (typeof draw === 'function') draw();
 }
 
 function updateMeta(roomId) {
-    const room = state.find(r => r.id === roomId);
+    // Käytetään == jotta tyyppi (str/num) ei estä löytymistä
+    const room = state.find(r => r.id == roomId); 
     if (room) room.lastEdited = Date.now();
 }
 
@@ -17,18 +25,18 @@ function updateMeta(roomId) {
 function handleCreateRoom() {
     const nameInput = document.getElementById('modal-room-name');
     if (!nameInput) return null;
-    const name = nameInput.value;
+    const name = nameInput.value.trim();
     
     if (!name) { alert("Nimi puuttuu!"); return null; }
     
-    const newId = Date.now();
+    const newId = generateId();
     
     state.push({
         id: newId,
         name: name,
         pinned: false,
         lastEdited: Date.now(),
-        categories: [{ id: Date.now()+1, name: "Tavarat", start: 0, removed: 0, locked: false }]
+        categories: [{ id: generateId(), name: "Tavarat", start: 0, removed: 0, locked: false }]
     });
     
     sync();
@@ -37,18 +45,18 @@ function handleCreateRoom() {
 
 function handleAddCategory(roomId) {
     const nameInput = document.getElementById('modal-cat-name');
-    const countDisplay = document.getElementById('modal-cat-start'); // DIV
+    const countDisplay = document.getElementById('modal-cat-start');
     
     if (!nameInput || !countDisplay) return;
 
-    const name = nameInput.value;
+    const name = nameInput.value.trim();
     const count = parseInt(countDisplay.innerText);
 
     if (name && !isNaN(count)) {
-        const room = state.find(r => r.id === roomId);
+        const room = state.find(r => r.id == roomId);
         if (room) {
             room.categories.push({ 
-                id: Date.now(), name: name, start: count, removed: 0, locked: false 
+                id: generateId(), name: name, start: count, removed: 0, locked: false 
             });
             updateMeta(roomId);
             sync();
@@ -60,9 +68,9 @@ function handleAddCategory(roomId) {
 }
 
 function handleEditStartAmount(roomId, catId, delta) {
-    const room = state.find(r => r.id === roomId);
-    const cat = room.categories.find(c => c.id === catId);
-    if (cat.locked) return;
+    const room = state.find(r => r.id == roomId);
+    const cat = room?.categories.find(c => c.id == catId);
+    if (!cat || cat.locked) return;
     
     cat.start = Math.max(0, cat.start + delta);
     if (cat.removed > cat.start) cat.removed = cat.start;
@@ -71,9 +79,9 @@ function handleEditStartAmount(roomId, catId, delta) {
 }
 
 function handleUpdateRemoved(roomId, catId, delta) {
-    const room = state.find(r => r.id === roomId);
-    const cat = room.categories.find(c => c.id === catId);
-    if (cat.locked) return;
+    const room = state.find(r => r.id == roomId);
+    const cat = room?.categories.find(c => c.id == catId);
+    if (!cat || cat.locked) return;
     
     cat.removed = Math.max(0, cat.removed + delta);
     if (cat.removed > cat.start) cat.start = cat.removed;
@@ -82,35 +90,40 @@ function handleUpdateRemoved(roomId, catId, delta) {
 }
 
 function handleToggleLock(roomId, catId) {
-    const room = state.find(r => r.id === roomId);
-    const cat = room.categories.find(c => c.id === catId);
-    cat.locked = !cat.locked;
-    updateMeta(roomId);
-    sync();
+    const room = state.find(r => r.id == roomId);
+    const cat = room?.categories.find(c => c.id == catId);
+    if (cat) {
+        cat.locked = !cat.locked;
+        updateMeta(roomId);
+        sync();
+    }
 }
 
 function handleTogglePin(roomId) {
-    const room = state.find(r => r.id === roomId);
-    if (room.pinned === undefined) room.pinned = false;
-    room.pinned = !room.pinned;
-    updateMeta(roomId);
-    sync();
+    const room = state.find(r => r.id == roomId);
+    if (room) {
+        room.pinned = !room.pinned;
+        updateMeta(roomId);
+        sync();
+    }
 }
 
 function handleDeleteRoom(roomId) {
     if (confirm("Poistetaanko huone ja kaikki sen tiedot?")) {
-        state = state.filter(r => r.id !== roomId);
+        state = state.filter(r => r.id != roomId);
         sync();
     }
 }
 
 function handleDeleteCat(roomId, catId) {
     if (confirm("Poistetaanko kategoria?")) {
-        const room = state.find(r => r.id === roomId);
-        room.categories = room.categories.filter(c => c.id !== catId);
-        updateMeta(roomId);
-        sync();
-        if (typeof closeCategoryModal === 'function') closeCategoryModal();
+        const room = state.find(r => r.id == roomId);
+        if (room) {
+            room.categories = room.categories.filter(c => c.id != catId);
+            updateMeta(roomId);
+            sync();
+            if (typeof closeCategoryModal === 'function') closeCategoryModal();
+        }
     }
 }
 
@@ -126,8 +139,6 @@ function handleResetApp() {
 
 function handleShareReport() {
     let totalGoal = 0, totalRem = 0;
-
-    // 1. Lasketaan ensin kokonaissummat
     state.forEach(room => {
         room.categories.forEach(c => {
             totalGoal += Math.ceil(c.start/3); 
@@ -136,8 +147,6 @@ function handleShareReport() {
     });
     
     const totalPerc = totalGoal > 0 ? Math.round((totalRem/totalGoal)*100) : 0;
-
-    // 2. Luodaan väliaikainen lista huoneista lajittelua varten
     const roomStats = state.map(room => {
         let rGoal = 0, rRem = 0;
         room.categories.forEach(c => {
@@ -148,16 +157,13 @@ function handleShareReport() {
         return { name: room.name, perc: rPerc, rem: rRem, goal: rGoal, isDone: rPerc >= 100 };
     });
 
-    // 3. Järjestetään huoneet: Suurin prosentti ensin
     roomStats.sort((a, b) => b.perc - a.perc);
 
-    // 4. Muodostetaan tekstilista (HUOM: Ei &thinsp; koodia, vaan tavallinen välilyönti)
     let roomText = "";
     roomStats.forEach(room => {
         roomText += `${room.isDone ? '✅' : '📦'} ${room.name}: ${room.perc} % (${room.rem}/${room.goal})\n`;
     });
 
-    // Otsikko ja yhteenveto
     const text = `Karsi 33% 🏠\nYhteensä: ${totalPerc} % (${totalRem}/${totalGoal})\n\n${roomText}`;
 
     if (navigator.share) {
@@ -180,7 +186,17 @@ function handleTextTransfer() {
     const currentData = JSON.stringify(state);
     const input = prompt("Liitä data tähän:", currentData);
     if (input && input !== currentData) {
-        try { state = JSON.parse(input); sync(); } catch(e) { alert("Virheellinen data!"); }
+        try { 
+            const parsed = JSON.parse(input);
+            if (Array.isArray(parsed)) {
+                state = parsed;
+                sync();
+            } else {
+                throw new Error("Invalid format");
+            }
+        } catch(e) { 
+            alert("Virheellinen data!"); 
+        }
     }
 }
 
@@ -198,23 +214,36 @@ function exportToCSV() {
 }
 
 function importFromCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (e) => {
-        const lines = e.target.result.split('\n');
+        const lines = e.target.result.split(/\r?\n/);
         const newState = [];
         for(let i=1; i<lines.length; i++) {
             const cols = lines[i].split(';');
-            if (cols.length < 4) continue;
+            if (cols.length < 4 || !cols[0]) continue;
+            
             let r = newState.find(x => x.name === cols[0]);
             if (!r) { 
-                r = { id: Date.now()+i, name: cols[0], categories: [], pinned: false, lastEdited: Date.now() }; 
+                r = { id: generateId(), name: cols[0], categories: [], pinned: false, lastEdited: Date.now() }; 
                 newState.push(r); 
             }
             r.categories.push({
-                id: Date.now()+i+100, name: cols[1], start: parseInt(cols[2])||0, removed: parseInt(cols[4])||0, locked: false
+                id: generateId(), 
+                name: cols[1] || "Tavarat", 
+                start: parseInt(cols[2])||0, 
+                removed: parseInt(cols[4])||0, 
+                locked: false
             });
         }
-        state = newState; sync();
+        if (newState.length > 0) {
+            state = newState; 
+            sync(); 
+        } else {
+            alert("CSV-tiedostosta ei löytynyt tietoja.");
+        }
     };
-    reader.readAsText(event.target.files[0]);
+    reader.readAsText(file);
 }

@@ -2,22 +2,22 @@
 
 let currentSort = 'created-asc'; 
 
-// Tila: Mikä näkymä on aktiivinen?
 let activeRoomId = null;     
 let activeCatId = null;      
 let activeAddRoom = false;   
 let activeSettings = false;  
 let activeStats = false;     
 
-// Käynnistä sovellus
-if (typeof draw === 'function') draw();
+// Käynnistä sovellus kun kaikki on ladattu
+window.addEventListener('DOMContentLoaded', () => {
+    if (typeof draw === 'function') draw();
+});
 
 function handleSortChange(value) {
     currentSort = value;
     draw();
 }
 
-// PÄIVITETTY FUNKTIO: Käsittelee nyt DIViä, ei inputtia
 function adjustAddModalInput(delta) {
     const display = document.getElementById('modal-cat-start');
     if (!display) return;
@@ -26,10 +26,10 @@ function adjustAddModalInput(delta) {
     if (isNaN(val)) val = 0;
     
     val = Math.max(0, val + delta);
-    display.innerText = val; // Päivitetään teksti
+    display.innerText = val;
 }
 
-// --- NAVIGOINTI LOGIIKKA (The Stack) ---
+// --- NAVIGOINTI LOGIIKKA ---
 
 function resetViews() {
     activeRoomId = null;
@@ -37,16 +37,17 @@ function resetViews() {
     activeAddRoom = false;
     activeSettings = false;
     activeStats = false;
-    document.getElementById('edit-modal').classList.add('hidden');
+    const modal = document.getElementById('edit-modal');
+    if (modal) modal.classList.add('hidden');
     document.body.style.overflow = 'auto';
 }
 
 function openModalBase() {
-    document.getElementById('edit-modal').classList.remove('hidden');
+    const modal = document.getElementById('edit-modal');
+    if (modal) modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
 
-// 1. ETUSIVU -> HUONE
 function openRoomModal(roomId) {
     resetViews(); 
     activeRoomId = roomId;
@@ -59,7 +60,6 @@ function closeRoomModal() {
     draw();
 }
 
-// 2. HUONE -> KATEGORIAN MUOKKAUS
 function openCategoryModal(roomId, catId) {
     activeRoomId = roomId; 
     activeCatId = catId;
@@ -75,7 +75,6 @@ function closeCategoryModal() {
     }
 }
 
-// 3. HUONE -> KATEGORIAN LISÄYS
 function openAddCategoryModal(roomId) {
     activeRoomId = roomId;
     activeCatId = 'NEW'; 
@@ -87,7 +86,6 @@ function closeAddCategoryModal() {
     openRoomModal(activeRoomId);
 }
 
-// 4. ETUSIVU -> HUONEEN LUONTI
 function openAddRoomModal() {
     resetViews();
     activeAddRoom = true;
@@ -103,7 +101,6 @@ function triggerCreateRoom() {
 }
 function closeAddRoomModal() { resetViews(); draw(); }
 
-// 5. ETUSIVU -> ASETUKSET
 function openSettingsModal() {
     resetViews();
     activeSettings = true;
@@ -112,7 +109,6 @@ function openSettingsModal() {
 }
 function closeSettingsModal() { resetViews(); draw(); }
 
-// 6. ETUSIVU -> TILASTOT
 function openStatsModal() {
     resetViews();
     activeStats = true;
