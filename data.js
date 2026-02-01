@@ -1,7 +1,6 @@
 // --- DATA.JS: Sovelluksen tila ja logiikka ---
 
 // 1. APUFUNKTIOT (Global)
-// Estää XSS-hyökkäykset puhdistamalla HTML-merkit käyttäjän syötteistä
 function escapeHtml(text) {
     if (!text) return "";
     return String(text)
@@ -12,21 +11,56 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
-// Uniikki ID-generaattori (Palauttaa aina merkkijonon)
 function generateId() {
     return typeof crypto.randomUUID === 'function' 
         ? crypto.randomUUID() 
         : Date.now() + '-' + Math.floor(Math.random() * 1000);
 }
 
+// --- HUONEPOHJAT (TEMPLATES) ---
+const ROOM_TEMPLATES = {
+    'empty': { 
+        label: 'Tyhjä huone (Aloita nollasta)', 
+        categories: ['Tavarat'] 
+    },
+    'bedroom': { 
+        label: 'Vaatekaappi & Makuuhuone', 
+        categories: ['Yläosat', 'Alaosat', 'Sukat & Alusvaatteet', 'Vuodevaatteet', 'Yöpöydän sälä'] 
+    },
+    'kitchen': { 
+        label: 'Keittiö', 
+        categories: ['Arkiasiat', 'Lasit & Mukit', 'Ruoanvalmistus', 'Aterimet & Ottimet', 'Muovirasiat', 'Pienkoneet'] 
+    },
+    'entryway': { 
+        label: 'Eteinen', 
+        categories: ['Kengät', 'Takit & Päällysvaatteet', 'Asusteet (pipot/hanskat)', 'Laukut & Reput', 'Avaimet & Pikkusälä'] 
+    },
+    'bathroom': { 
+        label: 'Kylpyhuone & WC', 
+        categories: ['Pyyhkeet', 'Kosmetiikka & Meikit', 'Pesuaineet', 'Lääkkeet & Ensiapu', 'Siivousvälineet'] 
+    },
+    'livingroom': { 
+        label: 'Olohuone & Viihde', 
+        categories: ['Kirjat & Lehdet', 'Elektroniikka & Johdot', 'Koriste-esineet', 'Pelit & Harrasteet', 'Tekstiilit'] 
+    },
+    'office': { 
+        label: 'Työhuone / Paperit', 
+        categories: ['Toimistotarvikkeet', 'Paperit & Kansiot', 'Johdot & Laturit', 'Elektroniikkaromu', 'Kirjat'] 
+    },
+    'storage': { 
+        label: 'Varasto / Autotalli', 
+        categories: ['Työkalut', 'Kausivaatteet/varusteet', 'Harrastusvälineet', 'Ehkä tarvitsen joskus', 'Romu & Risat'] 
+    }
+};
+
 // 2. DATAN LATAUS JA MIGRAATIO
 const rawState = JSON.parse(localStorage.getItem('karsinta_final_v1')) || [];
 
-// Varmistetaan, että kaikki ID:t ovat merkkijonoja (String).
-// Tämä korjaa vanhan datan (numerot) ja uuden datan (stringit) yhteensopivuuden.
 let state = rawState.map(room => ({
     ...room,
     id: String(room.id),
+    // Varmistetaan, että locked-ominaisuus on olemassa
+    locked: room.locked === true, 
     categories: room.categories.map(cat => ({
         ...cat,
         id: String(cat.id)
@@ -39,7 +73,6 @@ function sync() {
 }
 
 function updateMeta(roomId) {
-    // Nyt voimme käyttää turvallista === vertailua, koska kaikki ID:t ovat stringejä
     const room = state.find(r => r.id === roomId); 
     if (room) room.lastEdited = Date.now();
 }
@@ -48,10 +81,23 @@ function updateMeta(roomId) {
 
 function handleCreateRoom() {
     const nameInput = document.getElementById('modal-room-name');
-    if (!nameInput) return null;
-    const name = nameInput.value.trim();
+    const templateSelect = document.getElementById('modal-room-template');
     
+    if (!nameInput) return null;
+    
+    const name = nameInput.value.trim();
     if (!name) { alert("Nimi puuttuu!"); return null; }
+
+    const templateKey = templateSelect ? templateSelect.value : 'empty';
+    const template = ROOM_TEMPLATES[templateKey] || ROOM_TEMPLATES['empty'];
+
+    const newCategories = template.categories.map(catName => ({
+        id: generateId(),
+        name: catName,
+        start: 0,
+        removed: 0,
+        locked: false
+    }));
     
     const newId = generateId();
     
@@ -59,8 +105,9 @@ function handleCreateRoom() {
         id: newId,
         name: name,
         pinned: false,
+        locked: false, // Uusi huone ei ole lukittu
         lastEdited: Date.now(),
-        categories: [{ id: generateId(), name: "Tavarat", start: 0, removed: 0, locked: false }]
+        categories: newCategories
     });
     
     sync();
@@ -79,6 +126,7 @@ function handleAddCategory(roomId) {
     if (name && !isNaN(count)) {
         const room = state.find(r => r.id === roomId);
         if (room) {
+            if (room.locked) { alert("Huone on lukittu!"); return; } // Estetään lisäys lukittuun
             room.categories.push({ 
                 id: generateId(), name: name, start: count, removed: 0, locked: false 
             });
@@ -91,8 +139,45 @@ function handleAddCategory(roomId) {
     }
 }
 
+function handleRenameRoom(roomId) {
+    const room = state.find(r => r.id === roomId);
+    if (!room) return;
+    if (room.locked) { alert("Avaa huoneen lukitus ensin."); return; }
+    
+    const newName = prompt("Anna huoneelle uusi nimi:", room.name);
+    
+    if (newName && newName.trim() !== "") {
+        room.name = newName.trim();
+        updateMeta(roomId);
+        sync();
+        if (typeof openRoomModal === 'function') openRoomModal(roomId);
+    }
+}
+
+function handleRenameCategory(roomId, catId) {
+    const room = state.find(r => r.id === roomId);
+    if (!room) return;
+    // Sallitaan kategorian nimeäminen, vaikka kategoria olisi lukittu (koska se on vain tekstiä),
+    // mutta jos koko huone on lukittu, estetään se.
+    if (room.locked) { alert("Huone on lukittu."); return; }
+
+    const cat = room.categories.find(c => c.id === catId);
+    if (!cat) return;
+    
+    const newName = prompt("Anna kategorialle uusi nimi:", cat.name);
+    
+    if (newName && newName.trim() !== "") {
+        cat.name = newName.trim();
+        updateMeta(roomId);
+        sync();
+        if (typeof openCategoryModal === 'function') openCategoryModal(roomId, catId);
+    }
+}
+
 function handleEditStartAmount(roomId, catId, delta) {
     const room = state.find(r => r.id === roomId);
+    if (room && room.locked) return; // Estetään muokkaus
+
     const cat = room?.categories.find(c => c.id === catId);
     if (!cat || cat.locked) return;
     
@@ -104,6 +189,8 @@ function handleEditStartAmount(roomId, catId, delta) {
 
 function handleUpdateRemoved(roomId, catId, delta) {
     const room = state.find(r => r.id === roomId);
+    if (room && room.locked) return; // Estetään muokkaus
+
     const cat = room?.categories.find(c => c.id === catId);
     if (!cat || cat.locked) return;
     
@@ -115,11 +202,26 @@ function handleUpdateRemoved(roomId, catId, delta) {
 
 function handleToggleLock(roomId, catId) {
     const room = state.find(r => r.id === roomId);
+    // Huom: Kategorian lukituksen saa avata vaikka huone olisi lukittu, 
+    // mutta se ei hyödytä ennen kuin huoneen avaa. 
+    // Pidetään logiikka yksinkertaisena: "Lukot" ovat itsenäisiä.
     const cat = room?.categories.find(c => c.id === catId);
     if (cat) {
         cat.locked = !cat.locked;
         updateMeta(roomId);
         sync();
+    }
+}
+
+// UUSI: Huoneen lukitus
+function handleToggleRoomLock(roomId) {
+    const room = state.find(r => r.id === roomId);
+    if (room) {
+        room.locked = !room.locked;
+        updateMeta(roomId);
+        sync();
+        // Päivitetään näkymä heti, jos ollaan siinä
+        if (typeof openRoomModal === 'function') openRoomModal(roomId);
     }
 }
 
@@ -140,8 +242,10 @@ function handleDeleteRoom(roomId) {
 }
 
 function handleDeleteCat(roomId, catId) {
+    const room = state.find(r => r.id === roomId);
+    if (room && room.locked) { alert("Huone on lukittu."); return; }
+
     if (confirm("Poistetaanko kategoria?")) {
-        const room = state.find(r => r.id === roomId);
         if (room) {
             room.categories = room.categories.filter(c => c.id !== catId);
             updateMeta(roomId);
@@ -213,10 +317,11 @@ function handleTextTransfer() {
         try { 
             const parsed = JSON.parse(input);
             if (Array.isArray(parsed)) {
-                // Migraatio myös liitetylle datalle varmuuden vuoksi
                 state = parsed.map(r => ({
                     ...r, 
                     id: String(r.id),
+                    // Varmistetaan locked myös importissa
+                    locked: r.locked === true,
                     categories: r.categories.map(c => ({...c, id: String(c.id)}))
                 }));
                 sync();
@@ -254,10 +359,9 @@ function importFromCSV(event) {
             const cols = lines[i].split(';');
             if (cols.length < 4 || !cols[0]) continue;
             
-            // CSV tuonnissa varmistetaan myös string ID:t
             let r = newState.find(x => x.name === cols[0]);
             if (!r) { 
-                r = { id: generateId(), name: cols[0], categories: [], pinned: false, lastEdited: Date.now() }; 
+                r = { id: generateId(), name: cols[0], categories: [], pinned: false, locked: false, lastEdited: Date.now() }; 
                 newState.push(r); 
             }
             r.categories.push({

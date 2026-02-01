@@ -27,26 +27,43 @@ function draw() {
         });
         totalStart += rStart; totalGoal += rGoal; totalRem += rRem;
         const rPerc = rGoal > 0 ? (rRem / rGoal) * 100 : 0;
-        return { ...room, rStart, rGoal, rRem, rPerc, hasLockedCats: room.categories.some(c => c.locked) };
+        
+        // Huone on "kultainen", jos se on lukittu (valmis) JA tavoite (100% prosessista) on täynnä.
+        const isGolden = room.locked && rPerc >= 100;
+
+        return { ...room, rStart, rGoal, rRem, rPerc, isGolden, hasLockedCats: room.categories.some(c => c.locked) };
     });
 
     const globalPerc = totalGoal > 0 ? Math.round((totalRem / totalGoal) * 100) : 0;
     const globalDiff = totalRem - totalGoal;
 
+    // --- PÄIVITETTY LOGIIKKA: Grand Finale ---
+    // Voitto vaatii nyt, että:
+    // 1. On vähintään yksi huone
+    // 2. KAIKKI huoneet on lukittu (locked === true)
+    // 3. Kokonaistavoite on saavutettu (>= 100%)
+    const allRoomsLocked = state.length > 0 && state.every(r => r.locked);
+    const isVictory = allRoomsLocked && globalPerc >= 100;
+    
     // 2. Dashboard
     if (state.length > 0) {
+        const dashClass = isVictory ? "overall-summary hover-card gold-mode" : "overall-summary hover-card";
+        const dashClick = isVictory ? "openModalBase(); renderVictoryModal();" : "openStatsModal()";
+        const titleText = isVictory ? "🏆 URAKKA VALMIS!" : "Yhteenveto";
+        const percColor = isVictory ? "#4a3b00" : "var(--p)"; 
+
         dashboard.innerHTML += `
-            <div class="overall-summary hover-card" onclick="openStatsModal()" style="cursor:pointer;">
+            <div class="${dashClass}" onclick="${dashClick}" style="cursor:pointer;">
                 <div class="flex" style="margin-bottom:10px;">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <h2 style="margin:0; font-size:1.2em; color:var(--text);">Yhteenveto</h2>
+                        <h2 style="margin:0; font-size:1.2em; color:var(--text);">${titleText}</h2>
                     </div>
-                    <div style="color:var(--p); font-size:1.2em;">➔</div>
+                    <div style="color:${percColor}; font-size:1.2em;">➔</div>
                 </div>
 
                 <div class="flex" style="margin-bottom:5px;">
                     <strong style="font-size:1em; color:var(--text);">Valmis</strong>
-                    <strong style="color:var(--p); font-size:1.2em;">${globalPerc}&thinsp;%</strong>
+                    <strong style="color:${percColor}; font-size:1.2em;">${globalPerc}&thinsp;%</strong>
                 </div>
                 
                 <div class="bar-bg" style="height:16px;"><div class="bar-fill" style="width:${Math.min(100, globalPerc)}%"></div></div>
@@ -57,7 +74,7 @@ function draw() {
                     <div class="stat-box"><span class="stat-label">Tavoite</span><span class="stat-value">${totalGoal}</span></div>
                 </div>
                 
-                <div style="text-align:center; margin-top:10px; font-size:0.9em; font-weight:bold; color: ${globalDiff >= 0 ? 'var(--p)' : '#666'};">
+                <div style="text-align:center; margin-top:10px; font-size:0.9em; font-weight:bold; color: ${globalDiff >= 0 ? (isVictory ? '#4a3b00' : 'var(--p)') : '#666'};">
                     ${globalDiff >= 0 ? `Tavoite ylitetty (+${globalDiff})` : `Puuttuu: ${Math.abs(globalDiff)}`}
                 </div>
             </div>
@@ -89,9 +106,7 @@ function draw() {
             case 'last-edited': return b.lastEdited - a.lastEdited;
             case 'progress-desc': return b.rPerc - a.rPerc;
             case 'alpha-asc': return a.name.localeCompare(b.name);
-            default: 
-                // ID on nyt string, joten ei voi vähentää. Käytetään localeCompare.
-                return String(a.id).localeCompare(String(b.id));
+            default: return String(a.id).localeCompare(String(b.id));
         }
     });
 
@@ -99,26 +114,45 @@ function draw() {
         const diff = room.rRem - room.rGoal;
         const catCount = room.categories.length;
         
+        let statusIcon = '';
+        if (room.locked) {
+            statusIcon = room.isGolden ? '🏆' : '🔒';
+        }
+
         const rDiv = document.createElement('div');
-        rDiv.className = 'room-section hover-card'; 
+        rDiv.className = `room-section hover-card ${room.isGolden ? 'room-gold' : ''}`; 
+        
         rDiv.onclick = (e) => {
             if(!e.target.classList.contains('btn-star')) {
-                openRoomModal(room.id);
+                if (room.isGolden) {
+                    openModalBase();
+                    renderRoomVictoryModal(room.id);
+                } else {
+                    openRoomModal(room.id);
+                }
             }
         };
         rDiv.style.cursor = 'pointer';
-        if (room.pinned) rDiv.style.borderColor = 'var(--accent)'; 
+        
+        if (room.isGolden) {
+            // CSS hoitaa
+        } else if (room.locked) {
+            rDiv.style.background = '#f9f9f9';
+            rDiv.style.borderColor = '#ccc';
+        } else if (room.pinned) {
+            rDiv.style.borderColor = 'var(--accent)'; 
+        }
         
         rDiv.innerHTML = `
             <div class="flex">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <button class="btn-star ${room.pinned ? 'active' : ''}" onclick="handleTogglePin('${room.id}')" title="Kiinnitä">★</button>
-                    <h2>${escapeHtml(room.name)} ${room.rPerc >= 100 ? '🏆' : ''}</h2>
+                    <h2>${escapeHtml(room.name)} ${statusIcon}</h2>
                 </div>
                 <div style="color:var(--p); font-size:1.2em;">➔</div>
             </div>
             
-            <div class="room-summary" style="margin-bottom:0; pointer-events:none;">
+            <div class="room-summary" style="margin-bottom:0; pointer-events:none; background:rgba(255,255,255,0.5);">
                 <div>Alku: ${room.rStart} | Poistettu: ${room.rRem}/${room.rGoal}</div>
                 <div class="bar-bg"><div class="bar-fill bar-room" style="width:${Math.min(100, room.rPerc)}%"></div></div>
                 <div class="flex" style="margin-top: 5px; align-items: flex-start;">

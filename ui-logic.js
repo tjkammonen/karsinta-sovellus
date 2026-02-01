@@ -16,9 +16,6 @@ window.addEventListener('DOMContentLoaded', () => {
 // Lisätty: Escape-nappi sulkee modaalit
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        // Suljetaan modaali, jos sellainen on auki.
-        // resetViews palauttaa päänäkymään, tai voit muokata sitä palaamaan tason ylöspäin.
-        // Tässä yksinkertainen "sulje kaikki" -logiikka.
         const modal = document.getElementById('edit-modal');
         if (modal && !modal.classList.contains('hidden')) {
             resetViews();
@@ -53,6 +50,18 @@ function resetViews() {
     activeStats = false;
     const modal = document.getElementById('edit-modal');
     if (modal) modal.classList.add('hidden');
+    
+    // Varmistetaan että modaali näyttää normaalilta (ei victory-tilaa)
+    if (modal) {
+        modal.style.backgroundColor = "rgba(255, 255, 255, 0.98)";
+    }
+    const container = document.getElementById('modal-body');
+    if (container) {
+        container.className = "modal-content";
+        container.style.background = "#fff";
+        container.style.boxShadow = "none";
+    }
+
     document.body.style.overflow = 'auto';
 }
 
